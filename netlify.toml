@@ -1,0 +1,30 @@
+[build]
+  publish = "."
+  command = "npm run build"
+
+[functions]
+  directory = "netlify/functions"
+  included_files = ["assets/lotto-records.json", "assets/lotto-stats.json"]
+
+[functions."update-lotto-data"]
+  schedule = "0,15,30,45 18,19 * * 3,6"
+
+[[headers]]
+  for = "/.netlify/functions/lotto-data"
+  [headers.values]
+    Cache-Control = "public, max-age=60, stale-while-revalidate=300"
+
+[[headers]]
+  for = "/assets/lotto-stats.json"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

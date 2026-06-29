@@ -1,0 +1,13 @@
+{
+  "name": "hello-kitty-stat-lotto",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node -e \"console.log('Static site ready')\"",
+    "check:stats": "node netlify/functions/lib/stats.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "latest"
+  }
+}

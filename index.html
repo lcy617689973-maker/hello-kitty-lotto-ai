@@ -1,0 +1,2112 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hello Kitty 统计型选号器</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #4d1732;
+        --muted: #7c5067;
+        --pink: #ff7eb5;
+        --hot: #df3d83;
+        --deep: #8a275b;
+        --mint: #2bb8a7;
+        --blue: #3b82c4;
+        --gold: #d89a19;
+        --paper: rgba(255, 248, 251, 0.92);
+        --line: rgba(141, 45, 90, 0.16);
+        --shine: rgba(255, 255, 255, 0.86);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        font-family:
+          "Hannotate SC",
+          "Yuanti SC",
+          "Chalkboard SE",
+          "Comic Sans MS",
+          "Hiragino Maru Gothic ProN",
+          ui-rounded,
+          system-ui,
+          sans-serif;
+        background:
+          linear-gradient(135deg, rgba(255, 216, 231, 0.92), rgba(239, 252, 249, 0.84) 48%, rgba(255, 244, 218, 0.8)),
+          repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.3) 0 8px, rgba(255, 255, 255, 0) 8px 18px);
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .page {
+        min-height: 100svh;
+        display: grid;
+        grid-template-columns: minmax(330px, 0.86fr) minmax(420px, 1.14fr);
+        gap: clamp(16px, 3vw, 34px);
+        align-items: start;
+        width: min(1360px, 100%);
+        margin: 0 auto;
+        padding: clamp(14px, 2.5vw, 28px);
+      }
+
+      .play-area {
+        display: grid;
+        gap: clamp(10px, 2vh, 16px);
+        justify-items: center;
+        min-width: 0;
+        position: sticky;
+        top: 18px;
+      }
+
+      .stage {
+        position: relative;
+        width: min(520px, 100%);
+        aspect-ratio: 1086 / 1448;
+        filter: drop-shadow(0 16px 34px rgba(146, 43, 91, 0.25));
+      }
+
+      .template {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        border-radius: clamp(12px, 2vw, 22px);
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+
+      .bow-button {
+        position: absolute;
+        left: 50%;
+        top: 72.6%;
+        z-index: 5;
+        width: 22%;
+        height: 9%;
+        transform: translate(-50%, -50%);
+        border: 0;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.04);
+        cursor: pointer;
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .bow-button::before {
+        content: "";
+        position: absolute;
+        inset: 12%;
+        border-radius: 999px;
+        opacity: 0;
+        background: rgba(255, 255, 255, 0.34);
+        box-shadow: 0 0 0 5px rgba(255, 126, 181, 0.22);
+        transition: opacity 0.2s ease;
+      }
+
+      .bow-button:hover::before,
+      .bow-button:focus-visible::before {
+        opacity: 1;
+      }
+
+      .stage.is-drawing .bow-button {
+        animation: wiggle 0.62s ease-in-out 2;
+      }
+
+      .drop-zone {
+        position: absolute;
+        left: 50%;
+        top: 82.6%;
+        z-index: 4;
+        width: 58%;
+        height: 14%;
+        transform: translateX(-50%);
+        pointer-events: none;
+        perspective: 540px;
+      }
+
+      .falling-ball {
+        position: absolute;
+        left: calc(50% - var(--ball-size) / 2);
+        top: 0;
+        width: var(--ball-size);
+        aspect-ratio: 1;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        opacity: 0;
+        color: var(--ink);
+        font-size: clamp(0.86rem, calc(var(--ball-size) * 0.39), 1.34rem);
+        font-weight: 900;
+        text-shadow: 0 2px 0 rgba(255, 255, 255, 0.82);
+        border: max(2px, calc(var(--ball-size) * 0.032)) solid rgba(255, 255, 255, 0.72);
+        box-shadow:
+          inset -0.64em -0.72em 0.92em rgba(63, 18, 46, 0.28),
+          inset 0.3em 0.34em 0.5em rgba(255, 255, 255, 0.7),
+          inset 0.02em 0.08em 0.18em rgba(255, 255, 255, 0.95),
+          0 0.56em 0.24em rgba(69, 19, 49, 0.12),
+          0 0.62em 1em rgba(75, 20, 54, 0.28);
+        transform-style: preserve-3d;
+        will-change: transform;
+      }
+
+      .falling-ball::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 1) 0 8%, rgba(255, 255, 255, 0.46) 9%, transparent 17%),
+          radial-gradient(circle at 64% 72%, rgba(49, 12, 36, 0.24), transparent 42%),
+          radial-gradient(circle at 50% 52%, rgba(255, 255, 255, 0.2), transparent 60%);
+      }
+
+      .falling-ball::after {
+        content: "";
+        position: absolute;
+        left: 14%;
+        bottom: -18%;
+        z-index: -1;
+        width: 76%;
+        height: 28%;
+        border-radius: 50%;
+        background: rgba(82, 24, 57, 0.18);
+        filter: blur(2.5px);
+        transform: rotate(4deg);
+      }
+
+      .falling-ball span {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        width: 64%;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.18);
+        filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.8));
+      }
+
+      .falling-ball:nth-child(1) {
+        --end-x: clamp(-150px, -24vw, -86px);
+        --end-y: clamp(42px, 7vw, 76px);
+        --spin: -24deg;
+        --roll: -470deg;
+        background:
+          radial-gradient(circle at 27% 22%, #fff 0 10%, transparent 11%),
+          radial-gradient(circle at 68% 78%, rgba(91, 45, 18, 0.2), transparent 38%),
+          radial-gradient(circle at 42% 34%, #fff3bd, #ffd84d 72%);
+      }
+
+      .falling-ball:nth-child(2) {
+        --end-x: clamp(-108px, -16vw, -58px);
+        --end-y: clamp(72px, 10vw, 112px);
+        --spin: 18deg;
+        --roll: 420deg;
+        background:
+          radial-gradient(circle at 27% 22%, #fff 0 10%, transparent 11%),
+          radial-gradient(circle at 68% 78%, rgba(28, 72, 98, 0.2), transparent 38%),
+          radial-gradient(circle at 42% 34%, #e7f8ff, #82d8ff 72%);
+      }
+
+      .falling-ball:nth-child(3) {
+        --end-x: clamp(-48px, -7vw, -26px);
+        --end-y: clamp(52px, 8vw, 88px);
+        --spin: -12deg;
+        --roll: -390deg;
+        background:
+          radial-gradient(circle at 27% 22%, #fff 0 10%, transparent 11%),
+          radial-gradient(circle at 68% 78%, rgba(121, 31, 76, 0.2), transparent 38%),
+          radial-gradient(circle at 42% 34%, #fff3f8, #ff9fc5 72%);
+      }
+
+      .falling-ball:nth-child(4) {
+        --end-x: clamp(24px, 7vw, 48px);
+        --end-y: clamp(78px, 11vw, 124px);
+        --spin: 18deg;
+        --roll: 455deg;
+        background:
+          radial-gradient(circle at 27% 22%, #fff 0 10%, transparent 11%),
+          radial-gradient(circle at 68% 78%, rgba(69, 39, 115, 0.22), transparent 38%),
+          radial-gradient(circle at 42% 34%, #f6edff, #b98bff 72%);
+      }
+
+      .falling-ball:nth-child(5) {
+        --end-x: clamp(62px, 15vw, 110px);
+        --end-y: clamp(56px, 8.5vw, 94px);
+        --spin: -18deg;
+        --roll: -430deg;
+        background:
+          radial-gradient(circle at 27% 22%, #fff 0 10%, transparent 11%),
+          radial-gradient(circle at 68% 78%, rgba(31, 93, 77, 0.2), transparent 38%),
+          radial-gradient(circle at 42% 34%, #effffb, #81ddc7 72%);
+      }
+
+      .falling-ball:nth-child(6) {
+        --end-x: clamp(92px, 22vw, 152px);
+        --end-y: clamp(84px, 12vw, 132px);
+        --spin: 26deg;
+        --roll: 510deg;
+        background:
+          radial-gradient(circle at 27% 22%, #fff 0 10%, transparent 11%),
+          radial-gradient(circle at 68% 78%, rgba(111, 58, 24, 0.2), transparent 38%),
+          radial-gradient(circle at 42% 34%, #fff1dd, #ffb96f 72%);
+      }
+
+      .falling-ball:nth-child(7) {
+        --end-x: 0px;
+        --end-y: clamp(110px, 15vw, 158px);
+        --spin: -4deg;
+        --roll: -360deg;
+        color: var(--hot);
+        background:
+          radial-gradient(circle at 27% 22%, #fff 0 10%, transparent 11%),
+          radial-gradient(circle at 68% 78%, rgba(118, 32, 76, 0.22), transparent 38%),
+          radial-gradient(circle at 42% 34%, #fff, #ffe0ef 72%);
+        border: max(3px, calc(var(--ball-size) * 0.07)) solid var(--hot);
+      }
+
+      .stage.is-drawing .falling-ball {
+        animation: fall 0.72s cubic-bezier(0.18, 0.92, 0.22, 1.08) both;
+      }
+
+      .stage.is-drawing .falling-ball:nth-child(1) {
+        animation-delay: 0.05s;
+      }
+
+      .stage.is-drawing .falling-ball:nth-child(2) {
+        animation-delay: 0.32s;
+      }
+
+      .stage.is-drawing .falling-ball:nth-child(3) {
+        animation-delay: 0.59s;
+      }
+
+      .stage.is-drawing .falling-ball:nth-child(4) {
+        animation-delay: 0.86s;
+      }
+
+      .stage.is-drawing .falling-ball:nth-child(5) {
+        animation-delay: 1.13s;
+      }
+
+      .stage.is-drawing .falling-ball:nth-child(6) {
+        animation-delay: 1.4s;
+      }
+
+      .stage.is-drawing .falling-ball:nth-child(7) {
+        animation-delay: 1.67s;
+      }
+
+      .dock {
+        z-index: 8;
+        width: min(780px, 100%);
+        display: grid;
+        gap: 9px;
+      }
+
+      .number-strip {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        align-items: center;
+        gap: clamp(4px, 1vw, 10px);
+        min-height: clamp(54px, 7.8vh, 84px);
+        padding: clamp(4px, 0.75vw, 8px);
+        border-radius: 20px;
+        background: linear-gradient(90deg, rgba(255, 233, 242, 0.94), rgba(244, 255, 252, 0.9));
+        box-shadow:
+          inset 0 0 0 2px rgba(255, 255, 255, 0.68),
+          0 16px 34px rgba(143, 43, 90, 0.18);
+        backdrop-filter: blur(14px);
+      }
+
+      .number-card {
+        position: relative;
+        min-width: 0;
+        width: min(100%, 58px);
+        aspect-ratio: 1;
+        display: grid;
+        place-items: center;
+        justify-self: center;
+        border: clamp(2px, 0.34vw, 4px) solid #fff;
+        border-radius: clamp(15px, 2.4vw, 25px);
+        background: linear-gradient(180deg, #fff8fb 0%, #ffdce9 100%);
+        color: var(--ink);
+        font-size: clamp(1.3rem, 3.1vw, 2.35rem);
+        font-weight: 900;
+        line-height: 1;
+        text-shadow: 0 2px 0 rgba(255, 255, 255, 0.72);
+        box-shadow:
+          inset -0.18em -0.22em 0.5em rgba(217, 74, 133, 0.1),
+          0 0.12em 0.26em rgba(111, 37, 76, 0.12);
+        opacity: 0.42;
+        transform: translateY(10px) scale(0.94);
+        transition:
+          opacity 0.2s ease,
+          transform 0.38s cubic-bezier(0.2, 1.5, 0.34, 1);
+      }
+
+      .number-card::before {
+        content: "";
+        position: absolute;
+        left: 20%;
+        top: 14%;
+        width: 23%;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: var(--shine);
+      }
+
+      .number-card.revealed {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+
+      .number-card.extra {
+        color: #fff;
+        background: linear-gradient(145deg, #ff70aa 0%, #8a2f67 100%);
+        text-shadow: 0 3px 0 rgba(67, 10, 39, 0.22);
+      }
+
+      .number-card.extra::after {
+        content: "S";
+        position: absolute;
+        right: 18%;
+        bottom: 11%;
+        color: rgba(255, 255, 255, 0.94);
+        font-size: clamp(0.58rem, 1.2vw, 0.8rem);
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: center;
+        gap: clamp(8px, 1.8vw, 18px);
+      }
+
+      .action {
+        height: clamp(44px, 7vh, 60px);
+        min-height: 0;
+        display: grid;
+        place-items: center;
+        border: 4px solid #fff;
+        border-radius: 999px;
+        padding: 0 clamp(10px, 2vw, 22px);
+        font-size: clamp(1rem, 2.1vw, 1.32rem);
+        font-weight: 900;
+        color: #fff;
+        background: linear-gradient(180deg, #ff8abc, #e8468a);
+        box-shadow:
+          inset 0 5px 0 rgba(255, 255, 255, 0.33),
+          0 12px 22px rgba(164, 42, 96, 0.2);
+        cursor: pointer;
+      }
+
+      .action.secondary {
+        color: var(--hot);
+        background: rgba(255, 255, 255, 0.9);
+      }
+
+      .action:active,
+      .mode-button:active {
+        transform: translateY(2px) scale(0.98);
+      }
+
+      .panel {
+        display: grid;
+        gap: 14px;
+        min-width: 0;
+      }
+
+      .title-row {
+        display: grid;
+        gap: 5px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: clamp(1.9rem, 4.6vw, 3.6rem);
+        line-height: 1.03;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        font-size: clamp(0.96rem, 1.8vw, 1.15rem);
+        font-weight: 800;
+      }
+
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .metric,
+      .tool-panel,
+      .list-panel {
+        border: 2px solid rgba(255, 255, 255, 0.76);
+        background: var(--paper);
+        box-shadow: 0 14px 28px rgba(107, 38, 73, 0.12);
+        backdrop-filter: blur(14px);
+      }
+
+      .metric {
+        min-width: 0;
+        display: grid;
+        gap: 2px;
+        padding: 12px;
+        border-radius: 16px;
+      }
+
+      .metric b {
+        font-size: clamp(1.2rem, 2.6vw, 1.7rem);
+        line-height: 1.08;
+      }
+
+      .metric span {
+        min-width: 0;
+        color: var(--muted);
+        font-size: 0.84rem;
+        font-weight: 900;
+        overflow-wrap: anywhere;
+      }
+
+      .tool-panel,
+      .list-panel {
+        display: grid;
+        gap: 12px;
+        padding: clamp(12px, 2vw, 18px);
+        border-radius: 22px;
+      }
+
+      .panel-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      h2 {
+        font-size: clamp(1.08rem, 2vw, 1.28rem);
+        letter-spacing: 0;
+      }
+
+      .pill {
+        flex: 0 0 auto;
+        border-radius: 999px;
+        padding: 5px 9px;
+        color: #fff;
+        background: var(--mint);
+        font-size: 0.78rem;
+        font-weight: 900;
+      }
+
+      .mode-switch {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+        padding: 5px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid var(--line);
+      }
+
+      .mode-button {
+        min-width: 0;
+        min-height: 44px;
+        display: grid;
+        place-items: center;
+        gap: 1px;
+        border: 0;
+        border-radius: 14px;
+        padding: 7px 8px;
+        color: var(--muted);
+        background: transparent;
+        font-size: clamp(0.84rem, 1.55vw, 0.98rem);
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .mode-button small {
+        color: inherit;
+        font-size: 0.72rem;
+        font-weight: 900;
+        opacity: 0.82;
+      }
+
+      .mode-button.active {
+        color: #fff;
+        background: linear-gradient(135deg, var(--hot), var(--blue));
+        box-shadow: 0 8px 18px rgba(100, 58, 130, 0.2);
+      }
+
+      .mix-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .mix-item {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+        padding: 10px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.66);
+        border: 1px solid var(--line);
+      }
+
+      .mix-item b {
+        font-size: 1.08rem;
+      }
+
+      .mix-item span {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 900;
+      }
+
+      .chip-cloud {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .chip {
+        display: inline-grid;
+        grid-template-columns: auto auto;
+        align-items: center;
+        gap: 6px;
+        min-height: 32px;
+        border-radius: 999px;
+        padding: 5px 9px;
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid rgba(141, 45, 90, 0.14);
+        font-weight: 900;
+      }
+
+      .chip small {
+        color: var(--muted);
+        font-size: 0.74rem;
+      }
+
+      .chip.hot b {
+        color: var(--hot);
+      }
+
+      .chip.cold b {
+        color: var(--blue);
+      }
+
+      .list-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .recent-list {
+        display: grid;
+        gap: 7px;
+      }
+
+      .recent-row {
+        display: grid;
+        grid-template-columns: 6.2rem 1fr auto;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-weight: 900;
+      }
+
+      .recent-row .mini-numbers {
+        color: var(--ink);
+        overflow-wrap: anywhere;
+      }
+
+      .recent-row .super-mini {
+        color: #fff;
+        min-width: 24px;
+        min-height: 24px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--hot);
+      }
+
+      .layer-card {
+        display: grid;
+        gap: 12px;
+        padding: clamp(13px, 2vw, 18px);
+        border: 2px solid rgba(255, 255, 255, 0.76);
+        border-radius: 22px;
+        background: var(--paper);
+        box-shadow: 0 14px 28px rgba(107, 38, 73, 0.12);
+        backdrop-filter: blur(14px);
+      }
+
+      .layer-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .layer-title h2 {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .layer-index {
+        display: inline-grid;
+        place-items: center;
+        width: 28px;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        color: #fff;
+        background: linear-gradient(135deg, var(--hot), var(--blue));
+        font-size: 0.9rem;
+      }
+
+      .subtle {
+        color: var(--muted);
+        font-size: 0.88rem;
+        font-weight: 900;
+      }
+
+      .analysis-grid,
+      .smart-grid,
+      .advanced-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .mini-panel {
+        min-width: 0;
+        display: grid;
+        gap: 9px;
+        padding: 12px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.64);
+      }
+
+      .mini-panel.wide {
+        grid-column: 1 / -1;
+      }
+
+      .mini-title {
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+        color: var(--deep);
+        font-size: 0.92rem;
+        font-weight: 900;
+      }
+
+      .title-left {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      .info-button {
+        flex: 0 0 auto;
+        width: 20px;
+        height: 20px;
+        display: inline-grid;
+        place-items: center;
+        border: 1px solid rgba(151, 38, 91, 0.28);
+        border-radius: 50%;
+        color: var(--hot);
+        background: rgba(255, 255, 255, 0.82);
+        font-size: 0.78rem;
+        font-weight: 900;
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      .info-button:hover,
+      .info-button.active {
+        color: #fff;
+        border-color: transparent;
+        background: var(--hot);
+      }
+
+      .info-popover {
+        position: absolute;
+        left: 0;
+        top: calc(100% + 8px);
+        z-index: 40;
+        width: min(290px, calc(100vw - 48px));
+        padding: 10px 12px;
+        border: 1px solid rgba(151, 38, 91, 0.18);
+        border-radius: 12px;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 14px 28px rgba(107, 38, 73, 0.18);
+        font-size: 0.82rem;
+        line-height: 1.45;
+      }
+
+      .info-popover[hidden] {
+        display: none;
+      }
+
+      .window-tabs,
+      .number-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .tiny-button {
+        min-height: 32px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 5px 10px;
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.75);
+        font-size: 0.82rem;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .tiny-button.active {
+        color: #fff;
+        border-color: transparent;
+        background: var(--deep);
+      }
+
+      .bar-list {
+        display: grid;
+        gap: 7px;
+      }
+
+      .bar-list.collapsed {
+        max-height: 306px;
+        overflow: hidden;
+        padding-bottom: 2px;
+      }
+
+      .bar-row {
+        display: grid;
+        grid-template-columns: minmax(3.8rem, auto) 1fr minmax(3rem, auto);
+        align-items: center;
+        gap: 8px;
+        font-size: 0.82rem;
+        font-weight: 900;
+      }
+
+      .center-content .bar-list {
+        width: min(100%, 560px);
+        justify-self: center;
+      }
+
+      .center-content {
+        align-content: start;
+      }
+
+      .center-content .bar-row {
+        grid-template-columns: minmax(2.8rem, auto) minmax(180px, 1fr) minmax(2.5rem, auto);
+      }
+
+      .center-content .chip-cloud {
+        width: min(100%, 560px);
+        justify-self: center;
+        justify-content: center;
+      }
+
+      .title-actions {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .fold-button {
+        flex: 0 0 auto;
+        min-height: 24px;
+        border: 1px solid rgba(151, 38, 91, 0.18);
+        border-radius: 999px;
+        padding: 3px 8px;
+        color: var(--hot);
+        background: rgba(255, 255, 255, 0.8);
+        font-size: 0.72rem;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .fold-button:hover {
+        color: #fff;
+        border-color: transparent;
+        background: var(--hot);
+      }
+
+      .bar-track {
+        height: 9px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(141, 45, 90, 0.13);
+      }
+
+      .bar-fill {
+        height: 100%;
+        width: var(--w);
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--mint), var(--blue));
+      }
+
+      .recommendation-card {
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.74);
+        border: 1px solid var(--line);
+      }
+
+      .recommendation-code {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        align-items: center;
+        font-weight: 900;
+      }
+
+      .mini-ball {
+        display: inline-grid;
+        place-items: center;
+        min-width: 34px;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        color: var(--ink);
+        background: #fff;
+        border: 2px solid rgba(255, 126, 181, 0.36);
+        box-shadow: inset 0 -3px 8px rgba(255, 126, 181, 0.12);
+      }
+
+      .mini-ball.super {
+        color: #fff;
+        background: var(--hot);
+      }
+
+      .score-row {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .score-ring {
+        display: grid;
+        place-items: center;
+        width: 74px;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        color: #fff;
+        background:
+          radial-gradient(circle at center, var(--deep) 0 56%, transparent 57%),
+          conic-gradient(var(--mint) calc(var(--score) * 1%), rgba(141, 45, 90, 0.16) 0);
+        font-weight: 900;
+      }
+
+      .reason-list,
+      .plain-list {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .reason-list li,
+      .plain-list li {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 7px;
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-weight: 900;
+      }
+
+      .trend-box {
+        display: grid;
+        gap: 9px;
+      }
+
+      .sparkline {
+        display: grid;
+        grid-template-columns: repeat(var(--points), minmax(4px, 1fr));
+        align-items: end;
+        gap: 4px;
+        min-height: 76px;
+        padding: 8px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.68);
+        border: 1px solid var(--line);
+      }
+
+      .spark-bar {
+        min-height: 5px;
+        height: var(--h);
+        border-radius: 999px 999px 4px 4px;
+        background: linear-gradient(180deg, var(--hot), var(--gold));
+      }
+
+      .combo-list {
+        display: grid;
+        gap: 7px;
+      }
+
+      .combo-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+        min-height: 34px;
+        color: var(--muted);
+        font-size: 0.84rem;
+        font-weight: 900;
+      }
+
+      .combo-row b {
+        color: var(--ink);
+      }
+
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: clamp(14px, 3vh, 28px);
+        z-index: 20;
+        max-width: min(90vw, 420px);
+        padding: 10px 18px;
+        border: 3px solid #fff;
+        border-radius: 999px;
+        background: rgba(255, 126, 181, 0.94);
+        color: #fff;
+        font-size: clamp(0.95rem, 2.3vw, 1.12rem);
+        font-weight: 900;
+        opacity: 0;
+        pointer-events: none;
+        text-align: center;
+        text-shadow: 0 2px 0 rgba(113, 27, 68, 0.2);
+        transform: translate(-50%, 12px) scale(0.96);
+        transition:
+          opacity 0.2s ease,
+          transform 0.2s ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+      }
+
+      @keyframes fall {
+        0% {
+          opacity: 0;
+          transform: translate(0, -88%) rotateZ(0deg) rotateY(0deg) scale(0.48);
+        }
+
+        16% {
+          opacity: 1;
+        }
+
+        42% {
+          transform: translate(calc(var(--end-x) * 0.34), calc(var(--end-y) * 0.34)) rotateZ(calc(var(--roll) * 0.36)) rotateY(120deg)
+            scale(0.92);
+        }
+
+        72% {
+          transform: translate(var(--end-x), calc(var(--end-y) - 13%)) rotateZ(calc(var(--roll) * 0.78)) rotateY(260deg) scale(1.08);
+        }
+
+        86% {
+          transform: translate(var(--end-x), calc(var(--end-y) + 5%)) rotateZ(calc(var(--roll) * 0.93)) rotateY(330deg) scale(0.96);
+        }
+
+        100% {
+          opacity: 1;
+          transform: translate(var(--end-x), var(--end-y)) rotateZ(var(--spin)) rotateY(360deg) scale(1);
+        }
+      }
+
+      @keyframes wiggle {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) rotate(0deg) scale(1);
+        }
+
+        30% {
+          transform: translate(-50%, -50%) rotate(-8deg) scale(1.04);
+        }
+
+        62% {
+          transform: translate(-50%, -50%) rotate(8deg) scale(1.04);
+        }
+      }
+
+      @media (max-width: 900px) {
+        .page {
+          grid-template-columns: 1fr;
+          align-items: start;
+        }
+
+        .play-area {
+          order: 2;
+          position: static;
+        }
+
+        .panel {
+          order: 1;
+        }
+
+        .stage {
+          width: min(440px, 100%);
+        }
+      }
+
+      @media (max-width: 560px) {
+        .page {
+          padding: 12px;
+        }
+
+        .meta-grid,
+        .mix-row,
+        .list-grid,
+        .analysis-grid,
+        .smart-grid,
+        .advanced-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .mode-switch {
+          grid-template-columns: 1fr;
+        }
+
+        .number-strip {
+          gap: 4px;
+          min-height: 48px;
+          padding: 5px;
+          border-radius: 16px;
+        }
+
+        .number-card {
+          width: min(100%, 42px);
+          border-width: 3px;
+          border-radius: 16px;
+          font-size: clamp(1rem, 5.8vw, 1.45rem);
+        }
+
+        .recent-row {
+          grid-template-columns: 5.4rem 1fr auto;
+          font-size: 0.78rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="play-area" aria-label="号码推荐区">
+        <section class="stage" id="stage" aria-label="Hello Kitty 扭蛋机">
+          <img class="template" src="assets/hello-kitty-template.png" alt="Hello Kitty 粉色扭蛋机" />
+          <button class="bow-button" id="bowButton" type="button" aria-label="点击蝴蝶结扭一下"></button>
+          <div class="drop-zone" aria-hidden="true">
+            <div class="falling-ball"><span>06</span></div>
+            <div class="falling-ball"><span>11</span></div>
+            <div class="falling-ball"><span>26</span></div>
+            <div class="falling-ball"><span>32</span></div>
+            <div class="falling-ball"><span>33</span></div>
+            <div class="falling-ball"><span>49</span></div>
+            <div class="falling-ball"><span>1</span></div>
+          </div>
+        </section>
+
+        <section class="dock" aria-label="生成的号码">
+          <div class="number-strip" id="numbers" aria-live="polite"></div>
+          <div class="actions">
+            <button class="action" id="draw" type="button">生成推荐</button>
+            <button class="action secondary" id="copy" type="button">复制号码</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="panel" aria-label="统计型选号器">
+        <div class="title-row">
+          <h1>Hello Kitty 统计型选号器</h1>
+          <p class="subtitle" id="sourceLine">正在读取 Westlotto 历史开奖数据</p>
+        </div>
+
+        <div class="meta-grid" aria-label="历史数据摘要">
+          <div class="metric">
+            <b id="drawCount">-</b>
+            <span>历史期数</span>
+          </div>
+          <div class="metric">
+            <b id="rangeFrom">-</b>
+            <span>最早开奖</span>
+          </div>
+          <div class="metric">
+            <b id="rangeTo">-</b>
+            <span>最新开奖</span>
+          </div>
+        </div>
+
+        <section class="layer-card" aria-label="第一层 统计分析">
+          <div class="layer-title">
+            <h2><span class="layer-index">1</span>统计分析</h2>
+            <span class="pill">Analysis</span>
+          </div>
+          <div class="list-grid">
+            <div class="mini-panel">
+              <div class="mini-title"><span>历史热号排行榜</span><span>最多</span></div>
+              <div class="chip-cloud" id="hotList"></div>
+            </div>
+            <div class="mini-panel">
+              <div class="mini-title"><span>历史冷号排行榜</span><span>最少</span></div>
+              <div class="chip-cloud" id="coldList"></div>
+            </div>
+          </div>
+          <div class="mini-panel wide">
+            <div class="mini-title"><span>最近窗口热号</span><span id="windowLabel">100期</span></div>
+            <div class="window-tabs" id="windowTabs">
+              <button class="tiny-button" type="button" data-window="20">20期</button>
+              <button class="tiny-button" type="button" data-window="50">50期</button>
+              <button class="tiny-button active" type="button" data-window="100">100期</button>
+              <button class="tiny-button" type="button" data-window="300">300期</button>
+            </div>
+            <div class="chip-cloud" id="windowHotList"></div>
+          </div>
+          <div class="analysis-grid">
+            <div class="mini-panel">
+              <div class="mini-title">
+                <span class="title-left"
+                  ><span>奇偶比例</span
+                  ><button
+                    class="info-button"
+                    type="button"
+                    aria-label="查看奇偶比例定义"
+                    data-help-title="奇偶比例"
+                    data-help="定义：统计每期开奖的 6 个主号码里有几个奇数。比如“奇数3”表示这期号码里有 3 个奇数、3 个偶数。"
+                  >
+                    ?
+                  </button></span
+                ><span>历史分布</span>
+              </div>
+              <div class="bar-list" id="oddEvenBars"></div>
+            </div>
+            <div class="mini-panel">
+              <div class="mini-title">
+                <span class="title-left"
+                  ><span>大小比例</span
+                  ><button
+                    class="info-button"
+                    type="button"
+                    aria-label="查看大小比例定义"
+                    data-help-title="大小比例"
+                    data-help="定义：把 1-24 叫小号，25-49 叫大号。这里统计每期开奖中小号出现了几个。"
+                  >
+                    ?
+                  </button></span
+                ><span>1-24 / 25-49</span>
+              </div>
+              <div class="bar-list" id="smallLargeBars"></div>
+            </div>
+            <div class="mini-panel">
+              <div class="mini-title">
+                <span class="title-left"
+                  ><span>和值分析</span
+                  ><button
+                    class="info-button"
+                    type="button"
+                    aria-label="查看和值分析定义"
+                    data-help-title="和值分析"
+                    data-help="定义：把一期开奖结果里的 6 个主号码相加，得到一个总和。这里统计总和经常落在哪些区间。"
+                  >
+                    ?
+                  </button></span
+                ><span class="title-actions"><span id="sumAverage">均值 -</span><button class="fold-button" type="button" data-fold="sum">显示全部</button></span>
+              </div>
+              <div class="bar-list" id="sumBars"></div>
+            </div>
+            <div class="mini-panel center-content">
+              <div class="mini-title">
+                <span class="title-left"
+                  ><span>尾数分析</span
+                  ><button
+                    class="info-button"
+                    type="button"
+                    aria-label="查看尾数分析定义"
+                    data-help-title="尾数分析"
+                    data-help="定义：统计号码最后一位 0-9 的出现频率。比如 03、13、23 的尾数都是 3。"
+                  >
+                    ?
+                  </button></span
+                ><span>0-9</span>
+              </div>
+              <div class="bar-list" id="tailBars"></div>
+            </div>
+            <div class="mini-panel">
+              <div class="mini-title">
+                <span class="title-left"
+                  ><span>分区分析</span
+                  ><button
+                    class="info-button"
+                    type="button"
+                    aria-label="查看分区分析定义"
+                    data-help-title="分区分析"
+                    data-help="定义：把主号码分成低区 1-16、中区 17-33、高区 34-49。比如 2-2-2 表示三个区各出现 2 个号码。"
+                  >
+                    ?
+                  </button></span
+                ><span class="title-actions"><span>低 / 中 / 高</span><button class="fold-button" type="button" data-fold="zones">显示全部</button></span>
+              </div>
+              <div class="bar-list" id="zoneBars"></div>
+            </div>
+            <div class="mini-panel center-content">
+              <div class="mini-title">
+                <span class="title-left"
+                  ><span>连号与 Superzahl</span
+                  ><button
+                    class="info-button"
+                    type="button"
+                    aria-label="查看连号与 Superzahl 定义"
+                    data-help-title="连号与 Superzahl"
+                    data-help="定义：连号0表示没有相邻号码；连号1表示有 1 个相邻号码对，比如 21 和 22。这里按你需要的完整 0-6 档展示；6个主号码最多形成5个相邻对，所以连号6会保留为0%。Superzahl 是德国 LOTTO 6aus49 的附加号，下面显示 0-9 的历史出现次数。"
+                  >
+                    ?
+                  </button></span
+                ><span>概率</span>
+              </div>
+              <div class="bar-list" id="consecutiveBars"></div>
+              <div class="chip-cloud" id="superList"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="layer-card" aria-label="第二层 智能推荐">
+          <div class="layer-title">
+            <h2><span class="layer-index">2</span>智能推荐</h2>
+            <span class="pill" id="modePill">混合</span>
+          </div>
+          <div class="mode-switch" role="tablist" aria-label="算法模式">
+            <button class="mode-button" type="button" data-mode="random"><span>随机</span><small>Random</small></button>
+            <button class="mode-button" type="button" data-mode="hot"><span>热号</span><small>Hot</small></button>
+            <button class="mode-button" type="button" data-mode="cold"><span>冷号</span><small>Cold</small></button>
+            <button class="mode-button active" type="button" data-mode="balanced"><span>平衡</span><small>Balanced</small></button>
+            <button class="mode-button" type="button" data-mode="smart"><span>AI 推荐</span><small>AI</small></button>
+            <button class="mode-button" type="button" data-mode="custom"><span>自定义</span><small>Custom</small></button>
+          </div>
+          <div class="mix-row" id="mixRow" aria-label="当前算法比例"></div>
+          <div class="recommendation-card">
+            <div class="mini-title"><span>当前推荐</span><span id="currentModeName">Balanced</span></div>
+            <div class="recommendation-code" id="aiRecommendation"></div>
+          </div>
+        </section>
+
+        <section class="layer-card" aria-label="第三层 AI 模型">
+          <div class="layer-title">
+            <h2><span class="layer-index">3</span>AI模型</h2>
+            <span class="pill">Explain</span>
+          </div>
+          <p class="subtle">不预测中奖概率，只根据历史频率、近期走势、结构分布给这组号码一个可解释评分。</p>
+          <div class="smart-grid">
+            <div class="mini-panel">
+              <div class="mini-title"><span>AI Score</span><span id="scoreLabel">-</span></div>
+              <div class="score-row">
+                <div class="score-ring" id="scoreRing" style="--score: 0">-</div>
+                <div class="recommendation-code" id="scoreNumbers"></div>
+              </div>
+            </div>
+            <div class="mini-panel">
+              <div class="mini-title"><span>推荐原因</span><span>Top signals</span></div>
+              <ul class="reason-list" id="reasonList"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="layer-card" aria-label="第四层 高级功能">
+          <div class="layer-title">
+            <h2><span class="layer-index">4</span>高级功能</h2>
+            <span class="pill">Lab</span>
+          </div>
+          <div class="advanced-grid">
+            <div class="mini-panel">
+              <div class="mini-title"><span>号码走势图</span><span id="trendLabel">-</span></div>
+              <div class="number-tabs" id="trendTabs"></div>
+              <div class="trend-box">
+                <div class="sparkline" id="trendSpark" style="--points: 1"></div>
+                <p class="subtle" id="trendNote">选择一枚号码查看它在历史时间段里的出现变化。</p>
+              </div>
+            </div>
+            <div class="mini-panel">
+              <div class="mini-title"><span>组合评分卡</span><span id="compactScore">-</span></div>
+              <ul class="plain-list" id="compactScoreList"></ul>
+            </div>
+            <div class="mini-panel">
+              <div class="mini-title"><span>一键生成1000注</span><span>Top 3</span></div>
+              <button class="tiny-button" id="batchButton" type="button">生成并评分</button>
+              <div class="combo-list" id="batchList"></div>
+            </div>
+            <div class="mini-panel">
+              <div class="mini-title"><span>Monte Carlo模拟</span><span>虚拟抽样</span></div>
+              <button class="tiny-button" id="monteButton" type="button">运行模拟</button>
+              <ul class="plain-list" id="monteList"></ul>
+            </div>
+          </div>
+        </section>
+
+        <div class="list-panel">
+          <div class="panel-heading">
+            <h2>近期开奖</h2>
+            <span class="pill">Recent</span>
+          </div>
+          <div class="recent-list" id="recentList"></div>
+        </div>
+      </section>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </main>
+
+    <script>
+      const stage = document.querySelector("#stage");
+      const numberGrid = document.querySelector("#numbers");
+      const drawButton = document.querySelector("#draw");
+      const bowButton = document.querySelector("#bowButton");
+      const copyButton = document.querySelector("#copy");
+      const batchButton = document.querySelector("#batchButton");
+      const monteButton = document.querySelector("#monteButton");
+      const toast = document.querySelector("#toast");
+      const ballLabels = [...document.querySelectorAll(".falling-ball span")];
+      const modeButtons = [...document.querySelectorAll(".mode-button")];
+      const windowButtons = [...document.querySelectorAll("[data-window]")];
+      const foldButtons = [...document.querySelectorAll("[data-fold]")];
+      const modePill = document.querySelector("#modePill");
+      const mixRow = document.querySelector("#mixRow");
+      const hotList = document.querySelector("#hotList");
+      const coldList = document.querySelector("#coldList");
+      const windowHotList = document.querySelector("#windowHotList");
+      const windowLabel = document.querySelector("#windowLabel");
+      const superList = document.querySelector("#superList");
+      const recentList = document.querySelector("#recentList");
+      const aiRecommendation = document.querySelector("#aiRecommendation");
+      const currentModeName = document.querySelector("#currentModeName");
+      const scoreRing = document.querySelector("#scoreRing");
+      const scoreLabel = document.querySelector("#scoreLabel");
+      const scoreNumbers = document.querySelector("#scoreNumbers");
+      const reasonList = document.querySelector("#reasonList");
+      const compactScore = document.querySelector("#compactScore");
+      const compactScoreList = document.querySelector("#compactScoreList");
+      const trendTabs = document.querySelector("#trendTabs");
+      const trendSpark = document.querySelector("#trendSpark");
+      const trendLabel = document.querySelector("#trendLabel");
+      const trendNote = document.querySelector("#trendNote");
+      const batchList = document.querySelector("#batchList");
+      const monteList = document.querySelector("#monteList");
+      const drawCount = document.querySelector("#drawCount");
+      const rangeFrom = document.querySelector("#rangeFrom");
+      const rangeTo = document.querySelector("#rangeTo");
+      const sourceLine = document.querySelector("#sourceLine");
+      const infoButtons = [...document.querySelectorAll(".info-button")];
+
+      const modeCopy = {
+        random: { label: "随机 Random", pill: "随机", mix: [["6", "纯随机"], ["0", "历史权重"], ["S", "随机"]] },
+        hot: { label: "热号 Hot", pill: "热号", mix: [["5", "热号池"], ["1", "补位"], ["S", "热号加权"]] },
+        cold: { label: "冷号 Cold", pill: "冷号", mix: [["5", "冷号池"], ["1", "补位"], ["S", "均衡"]] },
+        balanced: { label: "平衡 Balanced", pill: "平衡", mix: [["2", "热号"], ["1", "冷号"], ["3", "随机/加权"]] },
+        smart: { label: "AI 推荐 AI", pill: "AI", mix: [["6", "频率加权"], ["+", "结构评分"], ["S", "附加号加权"]] },
+        custom: { label: "自定义 Custom", pill: "自定义", mix: [["2", "近期热"], ["2", "历史冷"], ["2", "中段随机"]] },
+      };
+
+      let stats;
+      let currentMode = "balanced";
+      let currentWindow = "100";
+      let current = { main: [6, 11, 26, 32, 33, 49], extra: 1 };
+      let selectedTrendNumber = 6;
+      let revealTimers = [];
+      let toastTimer;
+      let statMap = new Map();
+      let intervalMap = new Map();
+      let recent100Map = new Map();
+      let countRange = { min: 0, max: 1 };
+      let recentRange = { min: 0, max: 1 };
+      let missRange = { min: 0, max: 1 };
+      const foldedSections = { sum: true, zones: true };
+
+      function setBallSize() {
+        const stageWidth = stage.getBoundingClientRect().width;
+        stage.style.setProperty("--ball-size", `${Math.max(34, Math.min(68, stageWidth * 0.115))}px`);
+      }
+
+      function randomUnit() {
+        const buffer = new Uint32Array(1);
+        crypto.getRandomValues(buffer);
+        return buffer[0] / 0x100000000;
+      }
+
+      function randomInt(min, max) {
+        return Math.floor(randomUnit() * (max - min + 1)) + min;
+      }
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function normalized(value, range) {
+        return (value - range.min) / Math.max(1, range.max - range.min);
+      }
+
+      function formatTwo(value) {
+        return String(value).padStart(2, "0");
+      }
+
+      function numberBalls(values, extra) {
+        return [...values.map((value) => `<span class="mini-ball">${formatTwo(value)}</span>`), `<span class="mini-ball super">${extra}</span>`].join("");
+      }
+
+      function sampleOne(items, weightFn = () => 1, excluded = new Set()) {
+        const pool = items.filter((item) => !excluded.has(item.number));
+        const total = pool.reduce((sum, item) => sum + Math.max(0.001, weightFn(item)), 0);
+        let cursor = randomUnit() * total;
+        for (const item of pool) {
+          cursor -= Math.max(0.001, weightFn(item));
+          if (cursor <= 0) return item.number;
+        }
+        return pool.at(-1)?.number;
+      }
+
+      function pickMany(items, count, weightFn, excluded = new Set()) {
+        const picked = new Set();
+        while (picked.size < count && picked.size + excluded.size < items.length) {
+          const value = sampleOne(items, weightFn, new Set([...excluded, ...picked]));
+          if (value !== undefined) picked.add(value);
+        }
+        return [...picked];
+      }
+
+      function fillUnique(values, count, picker) {
+        const picked = new Set(values);
+        let guard = 0;
+        while (picked.size < count && guard < 500) {
+          guard += 1;
+          const next = picker(picked);
+          if (next !== undefined) picked.add(next);
+        }
+        return [...picked].slice(0, count).sort((a, b) => a - b);
+      }
+
+      function frequencyWeight(item) {
+        return 1 + normalized(item.count, countRange) * 0.72;
+      }
+
+      function recentWeight(item) {
+        const recent = recent100Map.get(item.number)?.count ?? 0;
+        return 1 + normalized(recent, recentRange) * 1.1;
+      }
+
+      function coldWeight(item) {
+        return 1 + (1 - normalized(item.count, countRange)) * 0.9;
+      }
+
+      function missWeight(item) {
+        const miss = intervalMap.get(item.number)?.currentMiss ?? 0;
+        return 1 + normalized(miss, missRange) * 0.75;
+      }
+
+      function superWeight(item) {
+        const counts = stats.super.stats.map((row) => row.count);
+        const min = Math.min(...counts);
+        const max = Math.max(...counts);
+        return 1 + ((item.count - min) / Math.max(1, max - min)) * 0.45;
+      }
+
+      function randomSuper(weighted = true) {
+        if (!stats) return randomInt(0, 9);
+        return sampleOne(stats.super.stats, weighted ? superWeight : () => 1) ?? randomInt(0, 9);
+      }
+
+      function createFallbackSet() {
+        const picked = new Set();
+        while (picked.size < 6) picked.add(randomInt(1, 49));
+        return { main: [...picked].sort((a, b) => a - b), extra: randomInt(0, 9) };
+      }
+
+      function createRandomSet() {
+        return createFallbackSet();
+      }
+
+      function createHotSet() {
+        const main = fillUnique(pickMany(stats.main.hot.slice(0, 16), 5, (item) => item.count), 6, (picked) => sampleOne(stats.main.stats, frequencyWeight, picked));
+        return { main, extra: randomSuper() };
+      }
+
+      function createColdSet() {
+        const main = fillUnique(pickMany(stats.main.cold.slice(0, 16), 5, coldWeight), 6, (picked) => sampleOne(stats.main.stats, () => 1, picked));
+        return { main, extra: randomSuper(false) };
+      }
+
+      function createBalancedSet() {
+        const hot = pickMany(stats.main.hot.slice(0, 14), 2, (item) => item.count);
+        const coldPool = stats.main.cold.slice(0, 14);
+        const coldBase = coldPool.at(-1)?.count ?? 1;
+        const cold = pickMany(coldPool, 1, (item) => 1 + (coldBase - item.count));
+        const middle = stats.main.stats.filter((item) => !stats.main.hot.slice(0, 8).some((hotItem) => hotItem.number === item.number));
+        const main = fillUnique([...hot, ...cold], 6, (picked) => sampleOne(middle, randomUnit() > 0.34 ? frequencyWeight : () => 1, picked));
+        return { main, extra: randomSuper() };
+      }
+
+      function createSmartSet() {
+        let best = null;
+        for (let i = 0; i < 14; i += 1) {
+          const main = pickMany(stats.main.stats, 6, (item) => frequencyWeight(item) + recentWeight(item) + missWeight(item) * 0.38).sort((a, b) => a - b);
+          const candidate = { main, extra: randomSuper() };
+          const scored = evaluateCombination(candidate);
+          if (!best || scored.score > best.score) best = { ...candidate, score: scored.score };
+        }
+        return { main: best.main, extra: best.extra };
+      }
+
+      function createCustomSet() {
+        const recentHot = pickMany(stats.windows["100"].hot.slice(0, 14), 2, (item) => item.count + 1);
+        const historicalCold = pickMany(stats.main.cold.slice(0, 16), 2, coldWeight);
+        const midPool = stats.main.stats.filter((item) => item.number >= 12 && item.number <= 38);
+        const main = fillUnique([...recentHot, ...historicalCold], 6, (picked) => sampleOne(midPool, frequencyWeight, picked));
+        return { main, extra: randomSuper() };
+      }
+
+      function createSet() {
+        if (!stats) return createFallbackSet();
+        const creators = { random: createRandomSet, hot: createHotSet, cold: createColdSet, balanced: createBalancedSet, smart: createSmartSet, custom: createCustomSet };
+        return creators[currentMode]();
+      }
+
+      function buildCards() {
+        numberGrid.innerHTML = "";
+        current.main.forEach((value) => {
+          const card = document.createElement("span");
+          card.className = "number-card";
+          card.textContent = formatTwo(value);
+          numberGrid.append(card);
+        });
+        const extra = document.createElement("span");
+        extra.className = "number-card extra";
+        extra.textContent = current.extra;
+        numberGrid.append(extra);
+      }
+
+      function syncBalls() {
+        [...current.main.map(formatTwo), current.extra].forEach((value, index) => {
+          ballLabels[index].textContent = value;
+        });
+      }
+
+      function clearRevealTimers() {
+        revealTimers.forEach((timer) => clearTimeout(timer));
+        revealTimers = [];
+      }
+
+      function revealCards() {
+        const cards = [...document.querySelectorAll(".number-card")];
+        cards.forEach((card) => card.classList.remove("revealed"));
+        cards.forEach((card, index) => {
+          revealTimers.push(setTimeout(() => card.classList.add("revealed"), 710 + index * 270));
+        });
+      }
+
+      function draw() {
+        clearRevealTimers();
+        current = createSet();
+        selectedTrendNumber = current.main[0];
+        buildCards();
+        syncBalls();
+        renderCurrentAnalysis();
+        stage.classList.remove("is-drawing");
+        void stage.offsetWidth;
+        stage.classList.add("is-drawing");
+        revealCards();
+      }
+
+      function showToast(message) {
+        clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add("show");
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 1600);
+      }
+
+      function closeInfoPopovers() {
+        document.querySelectorAll(".info-popover").forEach((popover) => popover.remove());
+        infoButtons.forEach((button) => {
+          button.classList.remove("active");
+          button.setAttribute("aria-expanded", "false");
+        });
+      }
+
+      function toggleInfo(button) {
+        const wasOpen = button.classList.contains("active");
+        closeInfoPopovers();
+        if (wasOpen) return;
+        const popover = document.createElement("div");
+        const title = document.createElement("b");
+        const body = document.createElement("span");
+        popover.className = "info-popover";
+        popover.setAttribute("role", "dialog");
+        title.textContent = button.dataset.helpTitle;
+        body.textContent = button.dataset.help;
+        popover.append(title, document.createElement("br"), body);
+        button.classList.add("active");
+        button.setAttribute("aria-expanded", "true");
+        button.after(popover);
+      }
+
+      function fallbackCopy(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.setAttribute("readonly", "");
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.append(textArea);
+        textArea.focus();
+        textArea.select();
+        textArea.setSelectionRange(0, text.length);
+        let copied = false;
+        try {
+          copied = document.execCommand("copy");
+        } finally {
+          textArea.remove();
+        }
+        return copied;
+      }
+
+      function writeClipboardWithTimeout(text) {
+        if (!navigator.clipboard || !window.isSecureContext) return Promise.resolve(false);
+        return Promise.race([
+          navigator.clipboard.writeText(text).then(() => true, () => false),
+          new Promise((resolve) => setTimeout(() => resolve(false), 450)),
+        ]);
+      }
+
+      async function copyNumbers() {
+        const scored = stats ? evaluateCombination(current) : null;
+        const text = `${current.main.map(formatTwo).join(" ")} + S${current.extra}${scored ? ` | AI Score ${scored.score}` : ""}`;
+        let copied = fallbackCopy(text);
+        if (!copied) copied = await writeClipboardWithTimeout(text);
+        if (copied) {
+          copyButton.textContent = "已复制";
+          showToast(`已复制：${text}`);
+          setTimeout(() => {
+            copyButton.textContent = "复制号码";
+          }, 1200);
+        } else {
+          window.prompt("长按或按 Ctrl+C 复制这组号码", text);
+          showToast("已打开手动复制框");
+        }
+      }
+
+      function modeStars(mode) {
+        return { random: "★★★☆☆", hot: "★★★★☆", cold: "★★★★☆", balanced: "★★★★★", smart: "★★★★★", custom: "★★★★★" }[mode];
+      }
+
+      function renderModeInfo() {
+        const config = modeCopy[currentMode];
+        modePill.textContent = config.pill;
+        currentModeName.textContent = `${config.label} ${modeStars(currentMode)}`;
+        mixRow.innerHTML = "";
+        config.mix.forEach(([value, label]) => {
+          const item = document.createElement("div");
+          item.className = "mix-item";
+          item.innerHTML = `<b>${value}</b><span>${label}</span>`;
+          mixRow.append(item);
+        });
+      }
+
+      function renderChips(target, rows, type, limit = 8) {
+        target.innerHTML = "";
+        rows.slice(0, limit).forEach((row) => {
+          const chip = document.createElement("span");
+          chip.className = `chip ${type}`;
+          chip.innerHTML = `<b>${formatTwo(row.number)}</b><small>${row.count}次</small>`;
+          target.append(chip);
+        });
+      }
+
+      function renderSuperChips(target, rows) {
+        target.innerHTML = "";
+        rows.forEach((row) => {
+          const chip = document.createElement("span");
+          chip.className = "chip hot";
+          chip.innerHTML = `<b>${row.number}</b><small>${row.count}次</small>`;
+          target.append(chip);
+        });
+      }
+
+      function roundedPercentages(rows) {
+        const total = rows.reduce((sum, row) => sum + row.count, 0);
+        if (!total) return rows.map(() => 0);
+        const values = rows.map((row, index) => {
+          const raw = (row.count / total) * 100;
+          return { index, floor: Math.floor(raw), rest: raw - Math.floor(raw) };
+        });
+        let remaining = 100 - values.reduce((sum, item) => sum + item.floor, 0);
+        values
+          .slice()
+          .sort((a, b) => b.rest - a.rest || rows[b.index].count - rows[a.index].count)
+          .forEach((item) => {
+            if (remaining <= 0) return;
+            item.floor += 1;
+            remaining -= 1;
+          });
+        return values.sort((a, b) => a.index - b.index).map((item) => item.floor);
+      }
+
+      function renderBars(target, rows, options = {}) {
+        const max = Math.max(1, ...rows.map((row) => row.count));
+        const percentages = options.percent && options.rebalancePercent !== false ? roundedPercentages(rows) : [];
+        target.innerHTML = "";
+        target.classList.toggle("collapsed", Boolean(options.collapsed));
+        rows.forEach((row, index) => {
+          const label = row.label ?? formatTwo(row.number);
+          const suffix = options.percent ? `${options.rebalancePercent === false ? Math.round(row.rate * 100) : percentages[index]}%` : `${row.count}次`;
+          const width = row.count ? Math.max(5, (row.count / max) * 100) : 0;
+          const item = document.createElement("div");
+          item.className = "bar-row";
+          item.innerHTML = `<span>${label}</span><span class="bar-track"><span class="bar-fill" style="--w:${width}%"></span></span><span>${suffix}</span>`;
+          target.append(item);
+        });
+      }
+
+      function visibleDistributionRows(rows, section) {
+        if (!foldedSections[section]) return rows;
+        if (section === "sum") {
+          return rows.filter((row) => {
+            const start = Number(row.label.split("-")[0]);
+            return start >= 110 && start <= 190;
+          });
+        }
+        if (section === "zones") {
+          const balancedZones = new Set(["1-2-3", "1-3-2", "2-1-3", "2-2-2", "2-3-1", "3-1-2", "3-2-1"]);
+          return rows.filter((row) => balancedZones.has(row.label)).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+        }
+        return rows;
+      }
+
+      function syncFoldButton(section) {
+        const button = document.querySelector(`[data-fold="${section}"]`);
+        if (!button) return;
+        button.textContent = foldedSections[section] ? "显示全部" : "收起";
+        button.setAttribute("aria-expanded", String(!foldedSections[section]));
+      }
+
+      function renderFoldedDistributions() {
+        if (!stats) return;
+        syncFoldButton("sum");
+        syncFoldButton("zones");
+        renderBars(document.querySelector("#sumBars"), visibleDistributionRows(stats.sum.commonBuckets, "sum"), {
+          percent: true,
+          collapsed: foldedSections.sum,
+          rebalancePercent: !foldedSections.sum,
+        });
+        renderBars(document.querySelector("#zoneBars"), visibleDistributionRows(stats.patterns.zones, "zones"), {
+          percent: true,
+          collapsed: foldedSections.zones,
+          rebalancePercent: !foldedSections.zones,
+        });
+      }
+
+      function renderRecent(rows) {
+        recentList.innerHTML = "";
+        rows
+          .slice()
+          .reverse()
+          .slice(0, 7)
+          .forEach((row) => {
+            const item = document.createElement("div");
+            item.className = "recent-row";
+            item.innerHTML = `<span>${row.date}</span><span class="mini-numbers">${row.main.map(formatTwo).join(" ")}</span><span class="super-mini">${row.super ?? "-"}</span>`;
+            recentList.append(item);
+          });
+      }
+
+      function renderWindow() {
+        if (!stats) return;
+        windowButtons.forEach((button) => button.classList.toggle("active", button.dataset.window === currentWindow));
+        windowLabel.textContent = `${currentWindow}期`;
+        renderChips(windowHotList, stats.windows[currentWindow].hot, "hot", 12);
+      }
+
+      function evaluateCombination(set) {
+        const nums = set.main;
+        const sum = nums.reduce((a, b) => a + b, 0);
+        const odd = nums.filter((n) => n % 2).length;
+        const small = nums.filter((n) => n <= 24).length;
+        const consecutive = nums.filter((n, i) => i && n === nums[i - 1] + 1).length;
+        const freq = nums.reduce((total, n) => total + normalized(statMap.get(n)?.count ?? 0, countRange), 0) / 6;
+        const recent = nums.reduce((total, n) => total + normalized(recent100Map.get(n)?.count ?? 0, recentRange), 0) / 6;
+        const miss = nums.reduce((total, n) => total + normalized(intervalMap.get(n)?.currentMiss ?? 0, missRange), 0) / 6;
+        const sumScore = 1 - Math.min(1, Math.abs(sum - stats.sum.average) / 70);
+        const balanceScore = (odd >= 2 && odd <= 4 ? 1 : 0.55) * 0.5 + (small >= 2 && small <= 4 ? 1 : 0.55) * 0.5;
+        const consecutiveScore = consecutive <= 2 ? 1 : 0.55;
+        const superItem = stats.super.stats.find((row) => row.number === set.extra);
+        const superScore = superItem ? normalized(superItem.count, { min: Math.min(...stats.super.stats.map((x) => x.count)), max: Math.max(...stats.super.stats.map((x) => x.count)) }) : 0.5;
+        const score = Math.round(clamp(42 + freq * 18 + recent * 14 + miss * 8 + sumScore * 9 + balanceScore * 7 + consecutiveScore * 5 + superScore * 4, 1, 99));
+        const hotRecent = nums.slice().sort((a, b) => (recent100Map.get(b)?.count ?? 0) - (recent100Map.get(a)?.count ?? 0))[0];
+        const missed = nums.slice().sort((a, b) => (intervalMap.get(b)?.currentMiss ?? 0) - (intervalMap.get(a)?.currentMiss ?? 0))[0];
+        const reasons = [
+          `${formatTwo(hotRecent)} 最近100期出现 ${recent100Map.get(hotRecent)?.count ?? 0} 次`,
+          `${formatTwo(missed)} 已经缺失 ${intervalMap.get(missed)?.currentMiss ?? 0} 期`,
+          `和值 ${sum}，接近历史均值 ${stats.sum.average}`,
+          `奇偶比 ${odd}:${6 - odd}`,
+          `大小比 ${small}:${6 - small}`,
+          consecutive ? `包含 ${consecutive} 组连号，仍在常见范围` : "没有连号，结构偏稳",
+          `Superzahl ${set.extra} 历史权重已计入`,
+        ];
+        return { score, reasons, details: { sum, odd, small, consecutive } };
+      }
+
+      function renderCurrentAnalysis() {
+        if (!stats) return;
+        const scored = evaluateCombination(current);
+        aiRecommendation.innerHTML = numberBalls(current.main, current.extra);
+        scoreNumbers.innerHTML = numberBalls(current.main, current.extra);
+        scoreRing.style.setProperty("--score", scored.score);
+        scoreRing.textContent = `${scored.score}`;
+        scoreLabel.textContent = `${scored.score}/100`;
+        reasonList.innerHTML = scored.reasons.map((reason) => `<li><span>✓</span><span>${reason}</span></li>`).join("");
+        compactScore.textContent = `${scored.score}/100`;
+        compactScoreList.innerHTML = [
+          `和值 ${scored.details.sum}`,
+          `奇偶 ${scored.details.odd}:${6 - scored.details.odd}`,
+          `大小 ${scored.details.small}:${6 - scored.details.small}`,
+          `连号 ${scored.details.consecutive} 组`,
+        ]
+          .map((text) => `<li><span>•</span><span>${text}</span></li>`)
+          .join("");
+        renderTrendTabs();
+        renderTrend(selectedTrendNumber);
+      }
+
+      function renderTrendTabs() {
+        trendTabs.innerHTML = "";
+        current.main.forEach((number) => {
+          const button = document.createElement("button");
+          button.className = `tiny-button${number === selectedTrendNumber ? " active" : ""}`;
+          button.type = "button";
+          button.textContent = formatTwo(number);
+          button.addEventListener("click", () => {
+            selectedTrendNumber = number;
+            renderTrendTabs();
+            renderTrend(number);
+          });
+          trendTabs.append(button);
+        });
+      }
+
+      function renderTrend(number) {
+        const points = stats.trend.numbers[String(number)] ?? [];
+        const max = Math.max(1, ...points.map((point) => point.count));
+        trendLabel.textContent = formatTwo(number);
+        trendSpark.style.setProperty("--points", points.length || 1);
+        trendSpark.innerHTML = points.map((point) => `<span class="spark-bar" title="${point.label}: ${point.count}次" style="--h:${Math.max(6, (point.count / max) * 72)}px"></span>`).join("");
+        const last = points.at(-1);
+        trendNote.textContent = `${formatTwo(number)} 在最近时间段 ${last?.label ?? "-"} 出现 ${last?.count ?? 0} 次。`;
+      }
+
+      function comboText(combo) {
+        return `${combo.main.map(formatTwo).join(" ")} + S${combo.extra}`;
+      }
+
+      function generateBatch() {
+        if (!stats) return;
+        const previousMode = currentMode;
+        const pool = [];
+        const modes = ["balanced", "custom", "hot", "cold", "random"];
+        for (let i = 0; i < 1000; i += 1) {
+          currentMode = modes[i % modes.length];
+          const combo = createSet();
+          pool.push({ ...combo, score: evaluateCombination(combo).score });
+        }
+        currentMode = previousMode;
+        const top = pool.sort((a, b) => b.score - a.score).slice(0, 3);
+        batchList.innerHTML = top
+          .map((combo, index) => `<div class="combo-row"><span><b>推荐第${index + 1}注</b> ${comboText(combo)}</span><span>${combo.score}</span></div>`)
+          .join("");
+        showToast("已生成1000注并完成评分");
+      }
+
+      function runMonteCarlo() {
+        if (!stats) return;
+        const previousMode = currentMode;
+        const sums = new Map();
+        const odds = new Map();
+        const zones = new Map();
+        for (let i = 0; i < 5000; i += 1) {
+          currentMode = i % 2 ? "custom" : "balanced";
+          const combo = createSet();
+          const sumBucket = Math.floor(combo.main.reduce((a, b) => a + b, 0) / 10) * 10;
+          const odd = combo.main.filter((n) => n % 2).length;
+          const zone = [
+            combo.main.filter((n) => n <= 16).length,
+            combo.main.filter((n) => n >= 17 && n <= 33).length,
+            combo.main.filter((n) => n >= 34).length,
+          ].join("-");
+          sums.set(sumBucket, (sums.get(sumBucket) ?? 0) + 1);
+          odds.set(`${odd}:${6 - odd}`, (odds.get(`${odd}:${6 - odd}`) ?? 0) + 1);
+          zones.set(zone, (zones.get(zone) ?? 0) + 1);
+        }
+        currentMode = previousMode;
+        const top = (map) => [...map.entries()].sort((a, b) => b[1] - a[1])[0];
+        monteList.innerHTML = [
+          `和值最多：${top(sums)[0]}-${Number(top(sums)[0]) + 9}`,
+          `奇偶组合最多：${top(odds)[0]}`,
+          `分区组合最多：${top(zones)[0]}`,
+          "推荐尽量贴近这些统计特征",
+        ]
+          .map((text) => `<li><span>•</span><span>${text}</span></li>`)
+          .join("");
+        showToast("Monte Carlo 模拟完成");
+      }
+
+      function renderStats() {
+        if (!stats) return;
+        const counts = stats.main.stats.map((row) => row.count);
+        const recentCounts = stats.windows["100"].stats.map((row) => row.count);
+        const misses = stats.main.intervals.map((row) => row.currentMiss);
+        statMap = new Map(stats.main.stats.map((row) => [row.number, row]));
+        intervalMap = new Map(stats.main.intervals.map((row) => [row.number, row]));
+        recent100Map = new Map(stats.windows["100"].stats.map((row) => [row.number, row]));
+        countRange = { min: Math.min(...counts), max: Math.max(...counts) };
+        recentRange = { min: Math.min(...recentCounts), max: Math.max(...recentCounts) };
+        missRange = { min: Math.min(...misses), max: Math.max(...misses) };
+        drawCount.textContent = stats.drawCount.toLocaleString("zh-CN");
+        rangeFrom.textContent = stats.dateRange.from;
+        rangeTo.textContent = stats.dateRange.to;
+        sourceLine.textContent = "Westlotto 历史开奖频率已加载";
+        renderChips(hotList, stats.main.hot, "hot", 10);
+        renderChips(coldList, stats.main.cold, "cold", 10);
+        renderWindow();
+        renderSuperChips(superList, stats.super.stats);
+        renderBars(document.querySelector("#oddEvenBars"), stats.patterns.oddEven, { percent: true });
+        renderBars(document.querySelector("#smallLargeBars"), stats.patterns.smallLarge, { percent: true });
+        document.querySelector("#sumAverage").textContent = `均值 ${stats.sum.average}`;
+        renderFoldedDistributions();
+        renderBars(document.querySelector("#tailBars"), stats.patterns.tails, { percent: true });
+        renderBars(document.querySelector("#consecutiveBars"), stats.patterns.consecutive, { percent: true });
+        renderRecent(stats.recentDraws);
+      }
+
+      function setMode(mode) {
+        currentMode = mode;
+        modeButtons.forEach((button) => button.classList.toggle("active", button.dataset.mode === mode));
+        renderModeInfo();
+      }
+
+      async function loadStats() {
+        try {
+          const endpoints = ["/.netlify/functions/lotto-data", "assets/lotto-stats.json"];
+          let loadedFrom = "";
+          for (const endpoint of endpoints) {
+            try {
+              const response = await fetch(endpoint, { cache: "no-cache" });
+              if (!response.ok) throw new Error("stats load failed");
+              stats = await response.json();
+              loadedFrom = endpoint;
+              break;
+            } catch (endpointError) {
+              if (endpoint === endpoints.at(-1)) throw endpointError;
+            }
+          }
+          renderStats();
+          sourceLine.textContent =
+            loadedFrom.includes("lotto-data") ? "Netlify 自动更新数据已加载" : "Westlotto 历史开奖频率已加载";
+          current = createSet();
+          selectedTrendNumber = current.main[0];
+          buildCards();
+          syncBalls();
+          renderCurrentAnalysis();
+          document.querySelectorAll(".number-card").forEach((card) => card.classList.add("revealed"));
+        } catch (error) {
+          sourceLine.textContent = "历史数据暂未加载，已切换为随机模式";
+          showToast("历史数据加载失败");
+        }
+      }
+
+      modeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setMode(button.dataset.mode);
+          draw();
+        });
+      });
+      windowButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          currentWindow = button.dataset.window;
+          renderWindow();
+        });
+      });
+      foldButtons.forEach((button) => {
+        const section = button.dataset.fold;
+        button.setAttribute("aria-expanded", String(!foldedSections[section]));
+      });
+      drawButton.addEventListener("click", draw);
+      bowButton.addEventListener("click", draw);
+      copyButton.addEventListener("click", copyNumbers);
+      batchButton.addEventListener("click", generateBatch);
+      monteButton.addEventListener("click", runMonteCarlo);
+      infoButtons.forEach((button) => {
+        button.setAttribute("aria-expanded", "false");
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          toggleInfo(button);
+        });
+      });
+      document.addEventListener("click", (event) => {
+        const foldButton = event.target.closest("[data-fold]");
+        if (foldButton) {
+          event.stopPropagation();
+          const section = foldButton.dataset.fold;
+          foldedSections[section] = !foldedSections[section];
+          renderFoldedDistributions();
+          return;
+        }
+        if (!event.target.closest(".title-left")) closeInfoPopovers();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeInfoPopovers();
+      });
+      window.addEventListener("resize", setBallSize);
+
+      setMode(currentMode);
+      buildCards();
+      syncBalls();
+      setBallSize();
+      document.querySelectorAll(".number-card").forEach((card) => card.classList.add("revealed"));
+      loadStats();
+    </script>
+  </body>
+</html>
