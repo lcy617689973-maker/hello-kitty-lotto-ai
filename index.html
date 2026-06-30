@@ -819,6 +819,50 @@
         background: var(--deep);
       }
 
+      .lucky-picker {
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .lucky-digit {
+        min-width: 0;
+        min-height: 32px;
+        border: 1px solid rgba(151, 38, 91, 0.18);
+        border-radius: 999px;
+        color: var(--hot);
+        background: rgba(255, 255, 255, 0.8);
+        font-size: 0.86rem;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .lucky-digit.active {
+        color: #fff;
+        border-color: transparent;
+        background: var(--hot);
+      }
+
+      .fixed-result {
+        display: grid;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 0.9rem;
+        font-weight: 900;
+      }
+
+      .fixed-code {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .fixed-code b {
+        color: var(--ink);
+        letter-spacing: 0.04em;
+      }
+
       .bar-list {
         display: grid;
         gap: 9px;
@@ -1133,6 +1177,10 @@
           grid-template-columns: 1fr;
         }
 
+        .lucky-picker {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+
         .number-strip {
           gap: 4px;
           min-height: 48px;
@@ -1342,13 +1390,13 @@
             <button class="mode-button" type="button" data-mode="random"><span>随机</span><small>Random</small></button>
             <button class="mode-button" type="button" data-mode="hot"><span>热号</span><small>Hot</small></button>
             <button class="mode-button" type="button" data-mode="cold"><span>冷号</span><small>Cold</small></button>
-            <button class="mode-button active" type="button" data-mode="balanced"><span>平衡</span><small>Balanced</small></button>
-            <button class="mode-button" type="button" data-mode="smart"><span>AI 推荐</span><small>AI</small></button>
+            <button class="mode-button" type="button" data-mode="balanced"><span>平衡</span><small>Balanced</small></button>
+            <button class="mode-button active" type="button" data-mode="smart"><span>AI 推荐</span><small>AI</small></button>
             <button class="mode-button" type="button" data-mode="custom"><span>自定义</span><small>Custom</small></button>
           </div>
           <div class="mix-row" id="mixRow" aria-label="当前算法比例"></div>
           <div class="recommendation-card">
-            <div class="mini-title"><span>当前推荐</span><span id="currentModeName">Balanced</span></div>
+            <div class="mini-title"><span>当前推荐</span><span id="currentModeName">AI 推荐 AI</span></div>
             <div class="recommendation-code" id="aiRecommendation"></div>
           </div>
         </section>
@@ -1396,6 +1444,14 @@
               <div class="mini-title"><span>一键生成1000注</span><span>Top 3</span></div>
               <button class="tiny-button" id="batchButton" type="button">生成并评分</button>
               <div class="combo-list" id="batchList"></div>
+            </div>
+            <div class="mini-panel">
+              <div class="mini-title"><span>固定幸运数字</span><span id="fixedScore">-</span></div>
+              <div class="lucky-picker" id="luckyPicker" aria-label="选择 Superzahl"></div>
+              <div class="fixed-result">
+                <span id="fixedLabel">选择 0-9，AI 推荐高分主号</span>
+                <div class="fixed-code"><b id="fixedNumbers">-- -- -- -- -- -- + S-</b><span id="fixedHint">Score</span></div>
+              </div>
             </div>
             <div class="mini-panel">
               <div class="mini-title"><span>Monte Carlo模拟</span><span>虚拟抽样</span></div>
@@ -1453,6 +1509,11 @@
       const trendNote = document.querySelector("#trendNote");
       const batchList = document.querySelector("#batchList");
       const monteList = document.querySelector("#monteList");
+      const luckyPicker = document.querySelector("#luckyPicker");
+      const fixedScore = document.querySelector("#fixedScore");
+      const fixedLabel = document.querySelector("#fixedLabel");
+      const fixedNumbers = document.querySelector("#fixedNumbers");
+      const fixedHint = document.querySelector("#fixedHint");
       const drawCount = document.querySelector("#drawCount");
       const rangeFrom = document.querySelector("#rangeFrom");
       const rangeTo = document.querySelector("#rangeTo");
@@ -1469,10 +1530,11 @@
       };
 
       let stats;
-      let currentMode = "balanced";
+      let currentMode = "smart";
       let currentWindow = "100";
       let current = { main: [6, 11, 26, 32, 33, 49], extra: 1 };
       let selectedTrendNumber = 6;
+      let selectedLucky = 1;
       let revealTimers = [];
       let toastTimer;
       let statMap = new Map();
@@ -1607,13 +1669,25 @@
 
       function createSmartSet() {
         let best = null;
-        for (let i = 0; i < 14; i += 1) {
+        for (let i = 0; i < 80; i += 1) {
           const main = pickMany(stats.main.stats, 6, (item) => frequencyWeight(item) + recentWeight(item) + missWeight(item) * 0.38).sort((a, b) => a - b);
           const candidate = { main, extra: randomSuper() };
           const scored = evaluateCombination(candidate);
           if (!best || scored.score > best.score) best = { ...candidate, score: scored.score };
         }
         return { main: best.main, extra: best.extra };
+      }
+
+      function createSmartSetForLucky(extra) {
+        if (!stats) return { ...createFallbackSet(), extra };
+        let best = null;
+        for (let i = 0; i < 600; i += 1) {
+          const main = pickMany(stats.main.stats, 6, (item) => frequencyWeight(item) + recentWeight(item) + missWeight(item) * 0.38).sort((a, b) => a - b);
+          const candidate = { main, extra };
+          const scored = evaluateCombination(candidate);
+          if (!best || scored.score > best.score) best = { ...candidate, score: scored.score };
+        }
+        return { main: best.main, extra: best.extra, score: best.score };
       }
 
       function createCustomSet() {
@@ -1666,7 +1740,10 @@
       function draw() {
         clearRevealTimers();
         current = createSet();
+        selectedLucky = current.extra;
         selectedTrendNumber = current.main[0];
+        renderLuckyPicker();
+        renderFixedLuckyResult({ ...current, score: stats ? evaluateCombination(current).score : undefined });
         buildCards();
         syncBalls();
         renderCurrentAnalysis();
@@ -1681,6 +1758,43 @@
         toast.textContent = message;
         toast.classList.add("show");
         toastTimer = setTimeout(() => toast.classList.remove("show"), 1600);
+      }
+
+      function renderLuckyPicker() {
+        if (!luckyPicker) return;
+        luckyPicker.innerHTML = "";
+        for (let digit = 0; digit <= 9; digit += 1) {
+          const button = document.createElement("button");
+          button.className = `lucky-digit${digit === selectedLucky ? " active" : ""}`;
+          button.type = "button";
+          button.textContent = digit;
+          button.setAttribute("aria-pressed", String(digit === selectedLucky));
+          button.addEventListener("click", () => useFixedLucky(digit));
+          luckyPicker.append(button);
+        }
+      }
+
+      function renderFixedLuckyResult(combo) {
+        if (!fixedScore || !fixedNumbers) return;
+        const score = combo.score ?? (stats ? evaluateCombination(combo).score : "-");
+        fixedScore.textContent = `${score}/100`;
+        fixedLabel.textContent = `Superzahl 固定为 ${combo.extra}`;
+        fixedNumbers.textContent = `${combo.main.map(formatTwo).join(" ")} + S${combo.extra}`;
+        fixedHint.textContent = "AI Score";
+      }
+
+      function useFixedLucky(digit) {
+        if (!stats) return;
+        selectedLucky = digit;
+        current = createSmartSetForLucky(digit);
+        selectedTrendNumber = current.main[0];
+        renderLuckyPicker();
+        renderFixedLuckyResult(current);
+        buildCards();
+        syncBalls();
+        renderCurrentAnalysis();
+        document.querySelectorAll(".number-card").forEach((card) => card.classList.add("revealed"));
+        showToast(`已固定 Superzahl ${digit}`);
       }
 
       function closeInfoPopovers() {
@@ -1969,7 +2083,7 @@
         if (!stats) return;
         const previousMode = currentMode;
         const pool = [];
-        const modes = ["balanced", "custom", "hot", "cold", "random"];
+        const modes = ["smart", "balanced", "custom", "hot", "cold", "random"];
         for (let i = 0; i < 1000; i += 1) {
           currentMode = modes[i % modes.length];
           const combo = createSet();
@@ -2071,9 +2185,12 @@
           sourceLine.textContent =
             loadedFrom.includes("lotto-data") ? "Netlify 自动更新数据已加载" : "Westlotto 历史开奖频率已加载";
           current = createSet();
+          selectedLucky = current.extra;
           selectedTrendNumber = current.main[0];
           buildCards();
           syncBalls();
+          renderLuckyPicker();
+          renderFixedLuckyResult({ ...current, score: evaluateCombination(current).score });
           renderCurrentAnalysis();
           document.querySelectorAll(".number-card").forEach((card) => card.classList.add("revealed"));
         } catch (error) {
@@ -2130,6 +2247,8 @@
       buildCards();
       syncBalls();
       setBallSize();
+      renderLuckyPicker();
+      renderFixedLuckyResult({ ...current, score: "-" });
       document.querySelectorAll(".number-card").forEach((card) => card.classList.add("revealed"));
       loadStats();
     </script>
