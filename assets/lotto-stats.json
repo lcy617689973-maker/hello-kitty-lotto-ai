@@ -1,7 +1,7 @@
 {
   "game": "LOTTO 6aus49",
   "sourceNote": "Westlotto / LOTTO.de historical draw data maintained by the site owner automation.",
-  "generatedAt": "2026-06-30T00:09:18",
+  "generatedAt": "2026-06-30T02:08:25",
   "drawCount": 5026,
   "dateRange": {
     "from": "1955-10-09",
@@ -776,6 +776,8 @@
       9
     ],
     "numbersPerDraw": 1,
+    "recordedDrawCount": 3147,
+    "missingDrawCount": 1879,
     "stats": [
       {
         "number": 0,

@@ -1299,11 +1299,11 @@
                     type="button"
                     aria-label="查看连号与 Superzahl 定义"
                     data-help-title="连号与 Superzahl"
-                    data-help="定义：连号0表示没有相邻号码；连号1表示有 1 个相邻号码对，比如 21 和 22。这里按你需要的完整 0-6 档展示；6个主号码最多形成5个相邻对，所以连号6会保留为0%。Superzahl 是德国 LOTTO 6aus49 的附加号，下面显示 0-9 的历史出现次数。"
+                    data-help="定义：连号0表示没有相邻号码；连号1表示有 1 个相邻号码对，比如 21 和 22。这里按你需要的完整 0-6 档展示；6个主号码最多形成5个相邻对，所以连号6会保留为0%。Superzahl 是德国 LOTTO 6aus49 的附加号；早期无附加号或源文件未提供 Superzahl 的期数不会参与 0-9 次数统计。"
                   >
                     ?
                   </button></span
-                ><span>概率</span>
+                ><span id="superSummary">概率</span>
               </div>
               <div class="bar-list" id="consecutiveBars"></div>
               <div class="chip-cloud" id="superList"></div>
@@ -1415,6 +1415,7 @@
       const windowHotList = document.querySelector("#windowHotList");
       const windowLabel = document.querySelector("#windowLabel");
       const superList = document.querySelector("#superList");
+      const superSummary = document.querySelector("#superSummary");
       const recentList = document.querySelector("#recentList");
       const aiRecommendation = document.querySelector("#aiRecommendation");
       const currentModeName = document.querySelector("#currentModeName");
@@ -2018,6 +2019,8 @@
         renderFoldedDistributions();
         renderBars(document.querySelector("#tailBars"), stats.patterns.tails, { percent: true });
         renderBars(document.querySelector("#consecutiveBars"), stats.patterns.consecutive, { percent: true });
+        const superRecorded = stats.super.recordedDrawCount ?? stats.super.stats.reduce((total, row) => total + row.count, 0);
+        superSummary.textContent = `Superzahl ${superRecorded.toLocaleString("zh-CN")}期有记录`;
         renderRecent(stats.recentDraws);
       }
 

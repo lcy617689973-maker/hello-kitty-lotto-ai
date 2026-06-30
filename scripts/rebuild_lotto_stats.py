@@ -31,6 +31,7 @@ def main():
 
     main_counts = Counter(n for row in records for n in row["main"])
     super_counts = Counter(row["super"] for row in records if row["super"] is not None)
+    super_recorded_count = sum(1 for row in records if row["super"] is not None)
     main_stats = stat_rows(main_counts, 1, 49)
     super_stats = stat_rows(super_counts, 0, 9)
 
@@ -172,6 +173,8 @@ def main():
         "super": {
             "range": [0, 9],
             "numbersPerDraw": 1,
+            "recordedDrawCount": super_recorded_count,
+            "missingDrawCount": draw_count - super_recorded_count,
             "stats": super_stats,
             "hot": sorted(super_stats, key=lambda row: (-row["count"], row["number"]))[:6],
             "cold": sorted(super_stats, key=lambda row: (row["count"], row["number"]))[:6],

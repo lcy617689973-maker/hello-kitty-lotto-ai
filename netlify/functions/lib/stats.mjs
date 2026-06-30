@@ -57,9 +57,13 @@ export function buildStats(inputRecords) {
 
   const mainCounts = new Map();
   const superCounts = new Map();
+  let superRecordedCount = 0;
   for (const row of records) {
     for (const number of row.main) addCount(mainCounts, number);
-    if (row.super !== null) addCount(superCounts, row.super);
+    if (row.super !== null) {
+      addCount(superCounts, row.super);
+      superRecordedCount += 1;
+    }
   }
 
   const mainStats = statRows(mainCounts, MAIN_START, MAIN_END);
@@ -224,6 +228,8 @@ export function buildStats(inputRecords) {
     super: {
       range: [SUPER_START, SUPER_END],
       numbersPerDraw: 1,
+      recordedDrawCount: superRecordedCount,
+      missingDrawCount: drawCount - superRecordedCount,
       stats: superStats,
       hot: [...superStats].sort(byHot).slice(0, 6),
       cold: [...superStats].sort(byCold).slice(0, 6),
