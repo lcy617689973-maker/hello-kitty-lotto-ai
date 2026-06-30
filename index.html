@@ -700,7 +700,7 @@
       .advanced-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+        gap: 14px;
       }
 
       .mini-panel {
@@ -711,6 +711,15 @@
         border-radius: 16px;
         border: 1px solid var(--line);
         background: rgba(255, 255, 255, 0.64);
+      }
+
+      .analysis-grid .mini-panel {
+        gap: 14px;
+        padding: clamp(14px, 2vw, 18px);
+        border: 1px solid rgba(155, 35, 75, 0.14);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 12px 26px rgba(86, 18, 45, 0.08);
       }
 
       .mini-panel.wide {
@@ -726,6 +735,12 @@
         color: var(--deep);
         font-size: 0.92rem;
         font-weight: 900;
+      }
+
+      .analysis-grid .mini-title {
+        padding-bottom: 4px;
+        border-bottom: 1px solid rgba(155, 35, 75, 0.1);
+        font-size: clamp(0.98rem, 1.45vw, 1.08rem);
       }
 
       .title-left {
@@ -806,7 +821,7 @@
 
       .bar-list {
         display: grid;
-        gap: 7px;
+        gap: 9px;
       }
 
       .bar-list.collapsed {
@@ -819,9 +834,14 @@
         display: grid;
         grid-template-columns: minmax(3.8rem, auto) 1fr minmax(3rem, auto);
         align-items: center;
-        gap: 8px;
+        gap: 10px;
+        min-height: 25px;
         font-size: 0.82rem;
         font-weight: 900;
+      }
+
+      .analysis-grid .bar-row {
+        font-size: clamp(0.88rem, 1.35vw, 0.98rem);
       }
 
       .center-content .bar-list {
@@ -871,17 +891,19 @@
       }
 
       .bar-track {
-        height: 9px;
+        height: 10px;
         overflow: hidden;
         border-radius: 999px;
-        background: rgba(141, 45, 90, 0.13);
+        background: rgba(205, 0, 0, 0.1);
       }
 
       .bar-fill {
+        display: block;
         height: 100%;
-        width: var(--w);
+        width: max(var(--w), var(--min-w));
         border-radius: inherit;
-        background: linear-gradient(90deg, #ff1f1f, #c90000);
+        background: linear-gradient(90deg, #ff2a2a, #d40000);
+        box-shadow: 0 0 0 1px rgba(180, 0, 0, 0.08);
       }
 
       .recommendation-card {
@@ -1798,7 +1820,7 @@
           const width = options.percent ? displayPercent : row.count ? Math.min(100, row.count) : 0;
           const item = document.createElement("div");
           item.className = "bar-row";
-          item.innerHTML = `<span>${label}</span><span class="bar-track"><span class="bar-fill" style="--w:${width}%"></span></span><span>${suffix}</span>`;
+          item.innerHTML = `<span>${label}</span><span class="bar-track"><span class="bar-fill" style="--w:${width}%; --min-w:${width ? "2px" : "0px"}"></span></span><span>${suffix}</span>`;
           target.append(item);
         });
       }
