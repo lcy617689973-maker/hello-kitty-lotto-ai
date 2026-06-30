@@ -881,7 +881,7 @@
         height: 100%;
         width: var(--w);
         border-radius: inherit;
-        background: linear-gradient(90deg, var(--mint), var(--blue));
+        background: linear-gradient(90deg, #ff1f1f, #c90000);
       }
 
       .recommendation-card {
@@ -1788,14 +1788,14 @@
       }
 
       function renderBars(target, rows, options = {}) {
-        const max = Math.max(1, ...rows.map((row) => row.count));
         const percentages = options.percent && options.rebalancePercent !== false ? roundedPercentages(rows) : [];
         target.innerHTML = "";
         target.classList.toggle("collapsed", Boolean(options.collapsed));
         rows.forEach((row, index) => {
           const label = row.label ?? formatTwo(row.number);
-          const suffix = options.percent ? `${options.rebalancePercent === false ? Math.round(row.rate * 100) : percentages[index]}%` : `${row.count}次`;
-          const width = row.count ? Math.max(5, (row.count / max) * 100) : 0;
+          const displayPercent = options.percent ? (options.rebalancePercent === false ? Math.round(row.rate * 100) : percentages[index]) : 0;
+          const suffix = options.percent ? `${displayPercent}%` : `${row.count}次`;
+          const width = options.percent ? displayPercent : row.count ? Math.min(100, row.count) : 0;
           const item = document.createElement("div");
           item.className = "bar-row";
           item.innerHTML = `<span>${label}</span><span class="bar-track"><span class="bar-fill" style="--w:${width}%"></span></span><span>${suffix}</span>`;
