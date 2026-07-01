@@ -32,7 +32,40 @@ function berlinTimeParts(date = new Date()) {
 function isBerlinUpdateSlot(date = new Date()) {
   if (process.env.FORCE_LOTTO_UPDATE === "true") return true;
   const parts = berlinTimeParts(date);
-  return ["Wed", "Sat"].includes(parts.weekday) && parts.hour === "20";
+  const hour = Number(parts.hour);
+  return ["Wed", "Sat"].includes(parts.weekday) && hour >= 20 && hour <= 23;
+}
+
+function parseManualDraw(url) {
+  const date = url.searchParams.get("date")?.trim();
+  const mainText = url.searchParams.get("main")?.trim();
+  const superText = url.searchParams.get("super")?.trim();
+  if (!date && !mainText && !superText) return null;
+
+  const main = (mainText ?? "")
+    .split(/[,\s;-]+/)
+    .filter(Boolean)
+    .map(Number)
+    .sort((a, b) => a - b);
+  const superNumber = Number(superText);
+  const uniqueMain = [...new Set(main)];
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? "")) {
+    throw new Error("Manual update needs date=YYYY-MM-DD");
+  }
+  if (uniqueMain.length !== 6 || uniqueMain.some((number) => !Number.isInteger(number) || number < 1 || number > 49)) {
+    throw new Error("Manual update needs six unique main numbers in 1-49, for example main=1,2,3,4,5,6");
+  }
+  if (!Number.isInteger(superNumber) || superNumber < 0 || superNumber > 9) {
+    throw new Error("Manual update needs super=0..9");
+  }
+
+  return {
+    date,
+    main: uniqueMain,
+    super: superNumber,
+    source: "manual-url-override",
+  };
 }
 
 function mergeDraw(records, draw) {
@@ -52,15 +85,38 @@ function mergeDraw(records, draw) {
   return { records: normalizeRecords([...normalized, draw]), changed: true, action: "appended" };
 }
 
-export default async function handler() {
-  if (!isBerlinUpdateSlot()) {
+export default async function handler(request) {
+  const url = new URL(request.url);
+  const force = url.searchParams.get("force") === "1" || url.searchParams.get("force") === "true";
+
+  if (!force && !isBerlinUpdateSlot()) {
     return Response.json({ ok: true, skipped: true, reason: "outside Berlin 20:00 Wednesday/Saturday slot" });
+  }
+
+  let incoming;
+  try {
+    incoming = parseManualDraw(url) ?? (await fetchLatestDraw());
+  } catch (error) {
+    const store = getStore(STORE_NAME);
+    const recordsPayload = (await readJsonBlob(store, RECORDS_KEY)) ?? (await readStaticRecords());
+    const records = normalizeRecords(recordsPayload.records);
+    return Response.json(
+      {
+        ok: false,
+        changed: false,
+        action: "source-unavailable",
+        message: error.message,
+        latestDate: records.at(-1)?.date ?? null,
+        drawCount: records.length,
+        help: "If the official source is temporarily unavailable, retry later or call this function with force=1&date=YYYY-MM-DD&main=1,2,3,4,5,6&super=7",
+      },
+      { status: 200, headers: { "Cache-Control": "no-store" } },
+    );
   }
 
   const store = getStore(STORE_NAME);
   const recordsPayload = (await readJsonBlob(store, RECORDS_KEY)) ?? (await readStaticRecords());
-  const latest = await fetchLatestDraw();
-  const incoming = { ...latest, source: latest.source ?? "official-live-source" };
+  incoming = { ...incoming, source: incoming.source ?? "official-live-source" };
   const { records, changed, action } = mergeDraw(recordsPayload.records, incoming);
   const stats = buildStats(records);
   const nextRecordsPayload = {
@@ -83,9 +139,9 @@ export default async function handler() {
     latestDate: stats.dateRange.to,
     drawCount: stats.drawCount,
     source: incoming.source,
-  });
+  }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export const config = {
-  schedule: "0,15,30,45 18,19 * * 3,6",
+  schedule: "0,15,30,45 18,19,20,21 * * 3,6",
 };

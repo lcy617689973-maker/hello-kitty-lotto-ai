@@ -48,24 +48,37 @@ function collectJsonCandidates(value, source, output = []) {
     value.drawDate ??
     value.date ??
     value.drawingDate ??
+    value.drawingDay ??
+    value.drawDay ??
+    value.gameDate ??
     value.lotteryDate ??
+    value.lottoDate ??
     value.ziehungstag ??
     value.ziehungsdatum ??
     value.datum;
-  const superNumber = value.superNumber ?? value.superzahl ?? value.superZahl ?? value.super;
+  let superNumber = value.superNumber ?? value.superzahl ?? value.superZahl ?? value.super ?? value.sz;
   const drawCollection = value.drawNumbersCollection ?? value.winningNumbersCollection;
 
   if (Array.isArray(drawCollection)) {
     const main = drawCollection
-      .filter((item) => item && (item.drawNumberType === undefined || item.drawNumberType === 0 || item.type === "main"))
+      .filter((item) => item && (item.drawNumberType === undefined || item.drawNumberType === 0 || item.type === "main" || item.type === "lotto"))
       .map((item) => item.drawNumber ?? item.number ?? item.value);
+    const superItem = drawCollection.find(
+      (item) => item && (item.drawNumberType === 1 || item.type === "super" || /super/i.test(String(item.drawNumberTypeName ?? item.name ?? ""))),
+    );
+    superNumber ??= superItem?.drawNumber ?? superItem?.number ?? superItem?.value;
     output.push({ date, main, super: superNumber, source });
   }
 
-  for (const key of ["numbers", "drawNumbers", "winningNumbers", "lottozahlen", "mainNumbers"]) {
+  for (const key of ["numbers", "drawNumbers", "drawingNumbers", "winningNumbers", "lottozahlen", "mainNumbers", "main", "zahlen", "gewinnzahlen"]) {
     if (Array.isArray(value[key])) {
       output.push({ date, main: value[key], super: superNumber, source });
     }
+  }
+
+  const numberedMain = [value.number1, value.number2, value.number3, value.number4, value.number5, value.number6];
+  if (numberedMain.every((number) => number !== undefined)) {
+    output.push({ date, main: numberedMain, super: superNumber, source });
   }
 
   for (const child of Object.values(value)) collectJsonCandidates(child, source, output);
@@ -85,6 +98,14 @@ function parseJsonLike(text, source) {
         // Ignore malformed embedded payloads.
       }
     }
+    const scripts = text.matchAll(/<script[^>]+type=["']application\/(?:ld\+)?json["'][^>]*>([\s\S]*?)<\/script>/gi);
+    for (const script of scripts) {
+      try {
+        collectJsonCandidates(JSON.parse(script[1]), source, candidates);
+      } catch {
+        // Ignore unrelated structured data.
+      }
+    }
   }
   return candidates.map(validDraw).filter(Boolean);
 }
@@ -92,7 +113,9 @@ function parseJsonLike(text, source) {
 function parseHtmlText(text, source) {
   const compact = text.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " ");
   const date = parseDate(compact);
-  const lottoLine = compact.match(/LOTTO\s*6aus49[^0-9]*(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})/i);
+  const lottoLine =
+    compact.match(/LOTTO\s*6\s*aus\s*49[^0-9]*(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})/i) ??
+    compact.match(/(?:Gewinnzahlen|Lottozahlen)[^0-9]*(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})/i);
   const superLine = compact.match(/Superzahl[^0-9]*(\d)/i);
   if (!lottoLine || !superLine) return [];
   const main = lottoLine.slice(1, 7).map(Number);
@@ -105,7 +128,9 @@ async function readSource(url) {
   const response = await fetch(url, {
     headers: {
       Accept: "application/json,text/html;q=0.9,*/*;q=0.8",
-      "User-Agent": "hello-kitty-lotto-updater/1.0",
+      "Accept-Language": "de-DE,de;q=0.9,en;q=0.7",
+      "Cache-Control": "no-cache",
+      "User-Agent": "Mozilla/5.0 (compatible; HelloKittyLottoUpdater/1.0; +https://hellokittyno1.netlify.app)",
     },
   });
   if (!response.ok) throw new Error(`${url} returned ${response.status}`);
