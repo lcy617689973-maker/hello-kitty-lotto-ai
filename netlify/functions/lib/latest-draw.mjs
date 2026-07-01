@@ -1,6 +1,6 @@
 const DEFAULT_SOURCES = [
+  "https://www.westlotto.de/lotto-6aus49/gewinnzahlen/gewinnzahlen.html",
   "https://www.lotto.de/lotto-6aus49/lottozahlen",
-  "https://www.westlotto.de/lotto-6aus49/gewinnzahlen",
 ];
 
 function parseDate(value) {
@@ -111,17 +111,47 @@ function parseJsonLike(text, source) {
 }
 
 function parseHtmlText(text, source) {
-  const compact = text.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " ");
+  const compact = text
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const draws = [];
+
+  // WestLotto currently exposes plain text in this shape:
+  // Ergebnisse vom Mittwoch, den 01.07.2026 2 4 5 13 41 48 Superzahl 4
+  const westlotto = compact.match(
+    /Ergebnisse\s+vom[\s\S]{0,80}?(\d{1,2}\.\d{1,2}\.(?:19|20)\d{2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+Superzahl\D+(\d)/i,
+  );
+  if (westlotto) {
+    const draw = validDraw({
+      date: westlotto[1],
+      main: westlotto.slice(2, 8).map(Number),
+      super: Number(westlotto[8]),
+      source,
+    });
+    if (draw) draws.push(draw);
+  }
+
+  // Generic fallback for pages that put the six LOTTO numbers near the text “Superzahl”.
   const date = parseDate(compact);
-  const lottoLine =
-    compact.match(/LOTTO\s*6\s*aus\s*49[^0-9]*(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})/i) ??
-    compact.match(/(?:Gewinnzahlen|Lottozahlen)[^0-9]*(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})/i);
-  const superLine = compact.match(/Superzahl[^0-9]*(\d)/i);
-  if (!lottoLine || !superLine) return [];
-  const main = lottoLine.slice(1, 7).map(Number);
-  const superNumber = Number(superLine[1]);
-  const draw = validDraw({ date, main, super: superNumber, source });
-  return draw ? [draw] : [];
+  const nearSuper = compact.match(
+    /(?:LOTTO\s*6\s*aus\s*49|Gewinnzahlen|Lottozahlen)[\s\S]{0,1200}?(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+Superzahl\D+(\d)/i,
+  );
+  if (date && nearSuper) {
+    const draw = validDraw({
+      date,
+      main: nearSuper.slice(1, 7).map(Number),
+      super: Number(nearSuper[7]),
+      source,
+    });
+    if (draw) draws.push(draw);
+  }
+
+  return draws;
 }
 
 async function readSource(url) {
@@ -130,7 +160,7 @@ async function readSource(url) {
       Accept: "application/json,text/html;q=0.9,*/*;q=0.8",
       "Accept-Language": "de-DE,de;q=0.9,en;q=0.7",
       "Cache-Control": "no-cache",
-      "User-Agent": "Mozilla/5.0 (compatible; HelloKittyLottoUpdater/1.0; +https://hellokittyno1.netlify.app)",
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/126 Safari/537.36",
     },
   });
   if (!response.ok) throw new Error(`${url} returned ${response.status}`);
