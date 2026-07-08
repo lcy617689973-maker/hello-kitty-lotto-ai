@@ -819,6 +819,12 @@
         background: var(--deep);
       }
 
+      .segmented-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+
       .lucky-picker {
         display: grid;
         grid-template-columns: repeat(10, minmax(0, 1fr));
@@ -861,6 +867,25 @@
       .fixed-code b {
         color: var(--ink);
         letter-spacing: 0.04em;
+      }
+
+      .copy-mini {
+        justify-self: start;
+        min-height: 30px;
+        border: 1px solid rgba(151, 38, 91, 0.18);
+        border-radius: 999px;
+        padding: 5px 12px;
+        color: var(--hot);
+        background: rgba(255, 255, 255, 0.82);
+        font-size: 0.82rem;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .copy-mini:hover {
+        color: #fff;
+        border-color: transparent;
+        background: var(--hot);
       }
 
       .bar-list {
@@ -1054,7 +1079,7 @@
 
       .combo-row {
         display: grid;
-        grid-template-columns: 1fr auto;
+        grid-template-columns: 1fr auto auto;
         gap: 8px;
         align-items: center;
         min-height: 34px;
@@ -1065,6 +1090,24 @@
 
       .combo-row b {
         color: var(--ink);
+      }
+
+      .combo-copy {
+        min-height: 28px;
+        border: 1px solid rgba(151, 38, 91, 0.18);
+        border-radius: 999px;
+        padding: 4px 9px;
+        color: var(--hot);
+        background: rgba(255, 255, 255, 0.82);
+        font-size: 0.76rem;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .combo-copy:hover {
+        color: #fff;
+        border-color: transparent;
+        background: var(--hot);
       }
 
       .toast {
@@ -1442,6 +1485,10 @@
             </div>
             <div class="mini-panel">
               <div class="mini-title"><span>一键生成1000注</span><span>Top 3</span></div>
+              <div class="segmented-row" aria-label="1000注生成模式">
+                <button class="tiny-button active" id="batchRandomMode" type="button">随机 Superzahl</button>
+                <button class="tiny-button" id="batchFixedMode" type="button">固定当前 S</button>
+              </div>
               <button class="tiny-button" id="batchButton" type="button">生成并评分</button>
               <div class="combo-list" id="batchList"></div>
             </div>
@@ -1451,6 +1498,7 @@
               <div class="fixed-result">
                 <span id="fixedLabel">选择 0-9，AI 推荐高分主号</span>
                 <div class="fixed-code"><b id="fixedNumbers">-- -- -- -- -- -- + S-</b><span id="fixedHint">Score</span></div>
+                <button class="copy-mini" id="fixedCopyButton" type="button">复制这组号码</button>
               </div>
             </div>
             <div class="mini-panel">
@@ -1480,6 +1528,8 @@
       const bowButton = document.querySelector("#bowButton");
       const copyButton = document.querySelector("#copy");
       const batchButton = document.querySelector("#batchButton");
+      const batchRandomMode = document.querySelector("#batchRandomMode");
+      const batchFixedMode = document.querySelector("#batchFixedMode");
       const monteButton = document.querySelector("#monteButton");
       const toast = document.querySelector("#toast");
       const ballLabels = [...document.querySelectorAll(".falling-ball span")];
@@ -1514,6 +1564,7 @@
       const fixedLabel = document.querySelector("#fixedLabel");
       const fixedNumbers = document.querySelector("#fixedNumbers");
       const fixedHint = document.querySelector("#fixedHint");
+      const fixedCopyButton = document.querySelector("#fixedCopyButton");
       const drawCount = document.querySelector("#drawCount");
       const rangeFrom = document.querySelector("#rangeFrom");
       const rangeTo = document.querySelector("#rangeTo");
@@ -1535,6 +1586,8 @@
       let current = { main: [6, 11, 26, 32, 33, 49], extra: 1 };
       let selectedTrendNumber = 6;
       let selectedLucky = 1;
+      let fixedLuckyCombo = null;
+      let batchMode = "random";
       let revealTimers = [];
       let toastTimer;
       let statMap = new Map();
@@ -1682,12 +1735,16 @@
         if (!stats) return { ...createFallbackSet(), extra };
         let best = null;
         for (let i = 0; i < 600; i += 1) {
-          const main = pickMany(stats.main.stats, 6, (item) => frequencyWeight(item) + recentWeight(item) + missWeight(item) * 0.38).sort((a, b) => a - b);
-          const candidate = { main, extra };
+          const candidate = createSmartCandidateForLucky(extra);
           const scored = evaluateCombination(candidate);
           if (!best || scored.score > best.score) best = { ...candidate, score: scored.score };
         }
         return { main: best.main, extra: best.extra, score: best.score };
+      }
+
+      function createSmartCandidateForLucky(extra) {
+        const main = pickMany(stats.main.stats, 6, (item) => frequencyWeight(item) + recentWeight(item) + missWeight(item) * 0.38).sort((a, b) => a - b);
+        return { main, extra };
       }
 
       function createCustomSet() {
@@ -1776,6 +1833,7 @@
 
       function renderFixedLuckyResult(combo) {
         if (!fixedScore || !fixedNumbers) return;
+        fixedLuckyCombo = combo;
         const score = combo.score ?? (stats ? evaluateCombination(combo).score : "-");
         fixedScore.textContent = `${score}/100`;
         fixedLabel.textContent = `Superzahl 固定为 ${combo.extra}`;
@@ -1795,6 +1853,14 @@
         renderCurrentAnalysis();
         document.querySelectorAll(".number-card").forEach((card) => card.classList.add("revealed"));
         showToast(`已固定 Superzahl ${digit}`);
+      }
+
+      function setBatchMode(mode) {
+        batchMode = mode;
+        batchRandomMode.classList.toggle("active", mode === "random");
+        batchFixedMode.classList.toggle("active", mode === "fixed");
+        batchRandomMode.setAttribute("aria-pressed", String(mode === "random"));
+        batchFixedMode.setAttribute("aria-pressed", String(mode === "fixed"));
       }
 
       function closeInfoPopovers() {
@@ -1864,6 +1930,40 @@
         } else {
           window.prompt("长按或按 Ctrl+C 复制这组号码", text);
           showToast("已打开手动复制框");
+        }
+      }
+
+      async function copyFixedNumbers() {
+        const combo = fixedLuckyCombo ?? current;
+        const score = combo.score ?? (stats ? evaluateCombination(combo).score : null);
+        const text = `${combo.main.map(formatTwo).join(" ")} + S${combo.extra}${score ? ` | AI Score ${score}` : ""}`;
+        let copied = fallbackCopy(text);
+        if (!copied) copied = await writeClipboardWithTimeout(text);
+        if (copied) {
+          fixedCopyButton.textContent = "已复制";
+          showToast(`已复制：${text}`);
+          setTimeout(() => {
+            fixedCopyButton.textContent = "复制这组号码";
+          }, 1200);
+        } else {
+          window.prompt("长按或按 Ctrl+C 复制这组号码", text);
+        }
+      }
+
+      async function copyTextValue(text, button = null) {
+        let copied = fallbackCopy(text);
+        if (!copied) copied = await writeClipboardWithTimeout(text);
+        if (copied) {
+          const previous = button?.textContent;
+          if (button) button.textContent = "已复制";
+          showToast(`已复制：${text}`);
+          if (button) {
+            setTimeout(() => {
+              button.textContent = previous;
+            }, 1200);
+          }
+        } else {
+          window.prompt("长按或按 Ctrl+C 复制这组号码", text);
         }
       }
 
@@ -2085,16 +2185,24 @@
         const pool = [];
         const modes = ["smart", "balanced", "custom", "hot", "cold", "random"];
         for (let i = 0; i < 1000; i += 1) {
-          currentMode = modes[i % modes.length];
-          const combo = createSet();
+          const combo =
+            batchMode === "fixed"
+              ? createSmartCandidateForLucky(selectedLucky)
+              : (() => {
+                  currentMode = modes[i % modes.length];
+                  return createSet();
+                })();
           pool.push({ ...combo, score: evaluateCombination(combo).score });
         }
         currentMode = previousMode;
         const top = pool.sort((a, b) => b.score - a.score).slice(0, 3);
         batchList.innerHTML = top
-          .map((combo, index) => `<div class="combo-row"><span><b>推荐第${index + 1}注</b> ${comboText(combo)}</span><span>${combo.score}</span></div>`)
+          .map(
+            (combo, index) =>
+              `<div class="combo-row"><span><b>推荐第${index + 1}注</b> ${comboText(combo)}</span><span>${combo.score}</span><button class="combo-copy" type="button" data-copy="${comboText(combo)} | AI Score ${combo.score}">复制</button></div>`,
+          )
           .join("");
-        showToast("已生成1000注并完成评分");
+        showToast(batchMode === "fixed" ? `已固定 S${selectedLucky} 生成1000注` : "已随机生成1000注并完成评分");
       }
 
       function runMonteCarlo() {
@@ -2219,6 +2327,14 @@
       bowButton.addEventListener("click", draw);
       copyButton.addEventListener("click", copyNumbers);
       batchButton.addEventListener("click", generateBatch);
+      batchList.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-copy]");
+        if (!button) return;
+        copyTextValue(button.dataset.copy, button);
+      });
+      batchRandomMode.addEventListener("click", () => setBatchMode("random"));
+      batchFixedMode.addEventListener("click", () => setBatchMode("fixed"));
+      fixedCopyButton.addEventListener("click", copyFixedNumbers);
       monteButton.addEventListener("click", runMonteCarlo);
       infoButtons.forEach((button) => {
         button.setAttribute("aria-expanded", "false");
@@ -2244,6 +2360,7 @@
       window.addEventListener("resize", setBallSize);
 
       setMode(currentMode);
+      setBatchMode(batchMode);
       buildCards();
       syncBalls();
       setBallSize();

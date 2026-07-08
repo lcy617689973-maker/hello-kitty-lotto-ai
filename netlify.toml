@@ -7,7 +7,7 @@
   included_files = ["assets/lotto-records.json", "assets/lotto-stats.json"]
 
 [functions."update-lotto-data"]
-  schedule = "0,15,30,45 18,19,20,21 * * 3,6"
+  schedule = "*/5 16,17,18,19,20,21,22 * * 3,6"
 
 [[headers]]
   for = "/.netlify/functions/lotto-data"
