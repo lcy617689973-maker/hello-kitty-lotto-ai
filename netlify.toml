@@ -4,23 +4,31 @@
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
   included_files = ["assets/lotto-records.json", "assets/lotto-stats.json"]
 
+# Netlify schedules are UTC. The function runs every 10 minutes during the
+# Wednesday/Saturday result window and only writes when a new official draw appears.
 [functions."update-lotto-data"]
-  schedule = "*/5 16,17,18,19,20,21,22 * * 3,6"
+  schedule = "*/10 16,17,18,19,20 * * 3,6"
 
 [[headers]]
   for = "/.netlify/functions/lotto-data"
   [headers.values]
-    Cache-Control = "public, max-age=60, stale-while-revalidate=300"
+    Cache-Control = "public, max-age=30, stale-while-revalidate=120"
 
 [[headers]]
   for = "/assets/lotto-stats.json"
   [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
+    Cache-Control = "no-cache, no-store, must-revalidate"
 
 [[headers]]
-  for = "/assets/*"
+  for = "/assets/lotto-records.json"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/assets/hello-kitty-template.png"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 

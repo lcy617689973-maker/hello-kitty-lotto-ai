@@ -65338,6 +65338,58 @@
       ],
       "super": 8,
       "source": "csv:LOTTO_ab_2022"
+    },
+    {
+      "date": "2026-07-01",
+      "main": [
+        2,
+        4,
+        5,
+        13,
+        41,
+        48
+      ],
+      "super": 4,
+      "source": "lotto.de-official"
+    },
+    {
+      "date": "2026-07-04",
+      "main": [
+        7,
+        10,
+        28,
+        31,
+        36,
+        37
+      ],
+      "super": 5,
+      "source": "lotto.de-official"
+    },
+    {
+      "date": "2026-07-08",
+      "main": [
+        15,
+        28,
+        30,
+        31,
+        37,
+        45
+      ],
+      "super": 5,
+      "source": "lotto.de-official"
+    },
+    {
+      "date": "2026-07-11",
+      "main": [
+        1,
+        4,
+        6,
+        20,
+        41,
+        48
+      ],
+      "super": 3,
+      "source": "lotto.de-official"
     }
   ]
 }

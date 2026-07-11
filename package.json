@@ -1,11 +1,11 @@
 {
-  "name": "hello-kitty-stat-lotto",
-  "version": "1.0.0",
+  "name": "hello-kitty-westlotto-stats",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node -e \"console.log('Static site ready')\"",
-    "check:stats": "node netlify/functions/lib/stats.mjs"
+    "build": "node -e \"console.log('Static site ready; Netlify will bundle functions automatically.')\"",
+    "check": "node --check netlify/functions/lotto-data.mjs && node --check netlify/functions/update-lotto-data.mjs && node --check netlify/functions/refresh-lotto-data.mjs && node --check netlify/functions/_shared/lotto-stats.mjs && node --check netlify/functions/_shared/official-source.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "latest"
