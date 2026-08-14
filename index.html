@@ -505,6 +505,12 @@
         gap: 10px;
       }
 
+      .heading-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
       h2 {
         font-size: clamp(1.08rem, 2vw, 1.28rem);
         letter-spacing: 0;
@@ -651,6 +657,25 @@
         display: grid;
         place-items: center;
         border-radius: 50%;
+        background: var(--hot);
+      }
+
+      .recent-more {
+        justify-self: center;
+        min-height: 34px;
+        border: 1px solid rgba(151, 38, 91, 0.18);
+        border-radius: 999px;
+        padding: 6px 14px;
+        color: var(--hot);
+        background: rgba(255, 255, 255, 0.82);
+        font-size: 0.84rem;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .recent-more:hover {
+        color: #fff;
+        border-color: transparent;
         background: var(--hot);
       }
 
@@ -1512,7 +1537,10 @@
         <div class="list-panel">
           <div class="panel-heading">
             <h2>近期开奖</h2>
-            <span class="pill">Recent</span>
+            <span class="heading-actions">
+              <button class="recent-more" id="recentToggle" type="button" aria-expanded="false">显示更多</button>
+              <span class="pill">Recent</span>
+            </span>
           </div>
           <div class="recent-list" id="recentList"></div>
         </div>
@@ -1545,6 +1573,7 @@
       const superList = document.querySelector("#superList");
       const superSummary = document.querySelector("#superSummary");
       const recentList = document.querySelector("#recentList");
+      const recentToggle = document.querySelector("#recentToggle");
       const aiRecommendation = document.querySelector("#aiRecommendation");
       const currentModeName = document.querySelector("#currentModeName");
       const scoreRing = document.querySelector("#scoreRing");
@@ -1588,6 +1617,7 @@
       let selectedLucky = 1;
       let fixedLuckyCombo = null;
       let batchMode = "random";
+      let recentExpanded = false;
       let revealTimers = [];
       let toastTimer;
       let statMap = new Map();
@@ -2079,16 +2109,20 @@
 
       function renderRecent(rows) {
         recentList.innerHTML = "";
-        rows
+        const visibleCount = recentExpanded ? 30 : 7;
+        const recentRows = rows
           .slice()
           .reverse()
-          .slice(0, 7)
-          .forEach((row) => {
-            const item = document.createElement("div");
-            item.className = "recent-row";
-            item.innerHTML = `<span>${row.date}</span><span class="mini-numbers">${row.main.map(formatTwo).join(" ")}</span><span class="super-mini">${row.super ?? "-"}</span>`;
-            recentList.append(item);
-          });
+          .slice(0, visibleCount);
+        recentRows.forEach((row) => {
+          const item = document.createElement("div");
+          item.className = "recent-row";
+          item.innerHTML = `<span>${row.date}</span><span class="mini-numbers">${row.main.map(formatTwo).join(" ")}</span><span class="super-mini">${row.super ?? "-"}</span>`;
+          recentList.append(item);
+        });
+        recentToggle.hidden = rows.length <= 7;
+        recentToggle.textContent = recentExpanded ? "收起" : `显示更多 (${Math.min(30, rows.length)}期)`;
+        recentToggle.setAttribute("aria-expanded", String(recentExpanded));
       }
 
       function renderWindow() {
@@ -2276,7 +2310,7 @@
 
       async function loadStats() {
         try {
-          const endpoints = ["/.netlify/functions/lotto-data", "/assets/lotto-stats.json"];
+          const endpoints = ["/.netlify/functions/lotto-data", "assets/lotto-stats.json"];
           let loadedFrom = "";
           for (const endpoint of endpoints) {
             try {
@@ -2336,6 +2370,10 @@
       batchFixedMode.addEventListener("click", () => setBatchMode("fixed"));
       fixedCopyButton.addEventListener("click", copyFixedNumbers);
       monteButton.addEventListener("click", runMonteCarlo);
+      recentToggle.addEventListener("click", () => {
+        recentExpanded = !recentExpanded;
+        if (stats) renderRecent(stats.recentDraws);
+      });
       infoButtons.forEach((button) => {
         button.setAttribute("aria-expanded", "false");
         button.addEventListener("click", (event) => {

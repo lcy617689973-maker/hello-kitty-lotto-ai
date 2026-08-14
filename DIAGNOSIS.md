@@ -1,15 +1,31 @@
-# 原压缩包故障诊断
+# 当前发布包检查
 
-原文件清单只有 7 个文件：`index.html`、`netlify.toml`、说明文档、图片、两个 JSON 和 Python 重建脚本。
+这版发布包包含网站运行和自动更新需要的主要文件：
 
-关键缺失：
+- `index.html`：网页主界面。
+- `assets/hello-kitty-template.png`：扭蛋机图片。
+- `assets/lotto-records.json`：历史开奖原始数据。
+- `assets/lotto-stats.json`：网页初始统计数据。
+- `netlify/functions/lotto-data.mjs`：网页线上读取最新统计数据的接口。
+- `netlify/functions/update-lotto-data.mjs`：定时/手动更新 WestLotto 最新数据的接口。
+- `netlify/functions/lib/latest-draw.mjs`：抓取并解析最新开奖。
+- `netlify/functions/lib/stats.mjs`：重新生成统计数据。
+- `netlify.toml`：Netlify 构建、函数目录、定时任务配置。
+- `package.json`：Netlify 构建和依赖配置。
+- `NETLIFY_DEPLOY.md`：部署和手动补录说明。
+- `scripts/rebuild_lotto_stats.py`：本地重建统计数据脚本。
 
-1. `netlify/functions/lotto-data.*` 不存在。
-2. `netlify/functions/update-lotto-data.*` 不存在。
-3. `package.json` 不存在，但 `netlify.toml` 却执行 `npm run build`。
-4. `netlify.toml` 指定的 Functions 目录不存在。
-5. 页面访问 `/.netlify/functions/lotto-data` 必然失败，然后静默回退到静态 JSON。
-6. `/assets/*` 的一年 immutable 缓存规则可能让静态 JSON 长期保持旧版本。
-7. 旧说明把 Scheduled Function 写成可以通过 URL 手动补录；Netlify 生产环境中的 Scheduled Function 不能直接通过 URL 调用，因此修复版增加了独立的同步函数 `refresh-lotto-data`。
+与旧文件夹相比，之前缺少的 `DIAGNOSIS.md` 只是诊断说明文件，不影响网站运行；现在已经补回到最新包里。
 
-结论：不是 WestLotto 自动读取“偶尔失效”，而是这次迭代生成 ZIP 时把整套后端文件漏掉了，只保留了前端读取入口和文字说明。
+当前自动更新策略：
+
+- 周三柏林时间 18:25 后开始尝试更新。
+- 周六柏林时间 19:25 后开始尝试更新。
+- Netlify 每 5 分钟唤醒一次函数。
+- 官方源临时不可用时，函数返回 JSON 状态，不再显示崩溃页。
+
+手动补录格式：
+
+```text
+https://你的网站域名/.netlify/functions/update-lotto-data?force=1&date=YYYY-MM-DD&main=1,2,3,4,5,6&super=7
+```

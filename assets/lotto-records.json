@@ -65390,6 +65390,19 @@
       ],
       "super": 3,
       "source": "lotto.de-official"
+    },
+    {
+      "date": "2026-07-25",
+      "main": [
+        18,
+        21,
+        31,
+        36,
+        42,
+        44
+      ],
+      "super": 3,
+      "source": "westlotto-official"
     }
   ]
 }
