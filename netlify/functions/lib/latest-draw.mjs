@@ -1,6 +1,9 @@
 const DEFAULT_SOURCES = [
   "https://www.lotto.de/lotto-6aus49/lottozahlen",
   "https://www.westlotto.de/lotto-6aus49/gewinnzahlen",
+  "https://www.westlotto.de/lotto-6aus49/gewinnzahlen/gewinnzahlen.html",
+  "https://m.westlotto.de/spielgemeinschaft/gewinnzahlen/gewinnzahlen.html",
+  "https://m.westlotto.de/lotto-6aus49/normalschein/lotto-spielschein.html",
 ];
 
 function parseDate(value) {
@@ -117,8 +120,11 @@ function parseHtmlText(text, source) {
     compact.match(/LOTTO\s*6\s*aus\s*49[^0-9]*(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})/i) ??
     compact.match(/(?:Gewinnzahlen|Lottozahlen)[^0-9]*(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})/i);
   const superLine = compact.match(/Superzahl[^0-9]*(\d)/i);
-  if (!lottoLine || !superLine) return [];
-  const main = lottoLine.slice(1, 7).map(Number);
+  if (!superLine) return [];
+  const superIndex = compact.search(/Superzahl/i);
+  const nearbyBeforeSuper = superIndex >= 0 ? compact.slice(Math.max(0, superIndex - 180), superIndex) : "";
+  const nearbyNumbers = nearbyBeforeSuper.match(/\b\d{1,2}\b/g)?.map(Number).filter((number) => number >= 1 && number <= 49) ?? [];
+  const main = lottoLine ? lottoLine.slice(1, 7).map(Number) : nearbyNumbers.slice(-6);
   const superNumber = Number(superLine[1]);
   const draw = validDraw({ date, main, super: superNumber, source });
   return draw ? [draw] : [];

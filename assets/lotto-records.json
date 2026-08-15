@@ -65392,6 +65392,45 @@
       "source": "lotto.de-official"
     },
     {
+      "date": "2026-07-15",
+      "main": [
+        7,
+        11,
+        35,
+        37,
+        39,
+        42
+      ],
+      "super": 1,
+      "source": "verified:lottohelden-2026-07-15"
+    },
+    {
+      "date": "2026-07-18",
+      "main": [
+        5,
+        17,
+        33,
+        35,
+        39,
+        47
+      ],
+      "super": 6,
+      "source": "verified:lotto-thueringen-2026-07-18"
+    },
+    {
+      "date": "2026-07-22",
+      "main": [
+        3,
+        5,
+        10,
+        14,
+        25,
+        49
+      ],
+      "super": 3,
+      "source": "verified:user-westlotto-screenshot-2026-07-22"
+    },
+    {
       "date": "2026-07-25",
       "main": [
         18,
@@ -65403,6 +65442,85 @@
       ],
       "super": 3,
       "source": "westlotto-official"
+    },
+    {
+      "date": "2026-07-29",
+      "main": [
+        3,
+        16,
+        22,
+        43,
+        48,
+        49
+      ],
+      "super": 8,
+      "source": "verified:westlotto-2026-07-29"
+    },
+    {
+      "date": "2026-08-01",
+      "main": [
+        19,
+        20,
+        22,
+        25,
+        31,
+        42
+      ],
+      "super": 8,
+      "source": "verified:westlotto-2026-08-01"
+    },
+    {
+      "date": "2026-08-05",
+      "main": [
+        15,
+        23,
+        24,
+        36,
+        44,
+        49
+      ],
+      "super": 0,
+      "source": "verified:user-westlotto-screenshot-2026-08-05"
+    },
+    {
+      "date": "2026-08-08",
+      "main": [
+        2,
+        8,
+        22,
+        30,
+        38,
+        43
+      ],
+      "super": 4,
+      "source": "verified:user-westlotto-screenshot-2026-08-08"
+    },
+    {
+      "date": "2026-08-12",
+      "main": [
+        7,
+        20,
+        22,
+        27,
+        29,
+        39
+      ],
+      "super": 2,
+      "source": "verified:user-westlotto-screenshot-2026-08-12"
+    },
+    {
+      "date": "2026-08-15",
+      "main": [
+        7,
+        13,
+        24,
+        26,
+        32,
+        45
+      ],
+      "super": 5,
+      "source": "verified:westlotto-2026-08-15"
     }
-  ]
+  ],
+  "updatedAt": "2026-08-15T19:29:14.924Z"
 }

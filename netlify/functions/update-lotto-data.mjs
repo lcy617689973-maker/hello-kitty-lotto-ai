@@ -18,6 +18,21 @@ async function readStaticRecords() {
   return JSON.parse(text);
 }
 
+function payloadLatestDate(payload) {
+  const records = normalizeRecords(payload?.records ?? []);
+  return records.at(-1)?.date ?? "";
+}
+
+async function readBestRecordsPayload(store) {
+  const [blobPayload, staticPayload] = await Promise.all([
+    readJsonBlob(store, RECORDS_KEY).catch(() => null),
+    readStaticRecords(),
+  ]);
+  if (!blobPayload) return staticPayload;
+  if (!staticPayload) return blobPayload;
+  return payloadLatestDate(blobPayload) >= payloadLatestDate(staticPayload) ? blobPayload : staticPayload;
+}
+
 function berlinTimeParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Berlin",
@@ -101,7 +116,7 @@ export default async function handler(request) {
     incoming = parseManualDraw(url) ?? (await fetchLatestDraw());
   } catch (error) {
     const store = getStore(STORE_NAME);
-    const recordsPayload = (await readJsonBlob(store, RECORDS_KEY)) ?? (await readStaticRecords());
+    const recordsPayload = await readBestRecordsPayload(store);
     const records = normalizeRecords(recordsPayload.records);
     return Response.json(
       {
@@ -118,7 +133,7 @@ export default async function handler(request) {
   }
 
   const store = getStore(STORE_NAME);
-  const recordsPayload = (await readJsonBlob(store, RECORDS_KEY)) ?? (await readStaticRecords());
+  const recordsPayload = await readBestRecordsPayload(store);
   incoming = { ...incoming, source: incoming.source ?? "official-live-source" };
   const { records, changed, action } = mergeDraw(recordsPayload.records, incoming);
   const stats = buildStats(records);
