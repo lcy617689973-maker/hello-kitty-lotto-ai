@@ -65520,7 +65520,20 @@
       ],
       "super": 5,
       "source": "verified:westlotto-2026-08-15"
+    },
+    {
+      "date": "2026-08-19",
+      "main": [
+        3,
+        23,
+        31,
+        33,
+        35,
+        47
+      ],
+      "super": 6,
+      "source": "verified:westlotto-2026-08-19"
     }
   ],
-  "updatedAt": "2026-08-15T19:29:14.924Z"
+  "updatedAt": "2026-08-21T19:12:03.937Z"
 }

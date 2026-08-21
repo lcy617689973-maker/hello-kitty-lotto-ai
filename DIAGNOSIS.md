@@ -8,6 +8,7 @@
 - `assets/lotto-stats.json`：网页初始统计数据。
 - `netlify/functions/lotto-data.mjs`：网页线上读取最新统计数据的接口。
 - `netlify/functions/update-lotto-data.mjs`：定时/手动更新 WestLotto 最新数据的接口。
+- `netlify/functions/manual-update-lotto-data.mjs`：手动检查/刷新最新数据的公开接口。
 - `netlify/functions/lib/latest-draw.mjs`：抓取并解析最新开奖。
 - `netlify/functions/lib/stats.mjs`：重新生成统计数据。
 - `netlify.toml`：Netlify 构建、函数目录、定时任务配置。
@@ -19,7 +20,7 @@
 
 当前自动更新策略：
 
-- 当前随包静态数据已补到 `2026-08-15`，历史记录共 `5040` 条。
+- 当前随包静态数据已补到 `2026-08-19`，历史记录共 `5041` 条。
 - 网页读取数据时会比较 Netlify Blob 和随包静态 JSON，优先使用日期更新的一份，避免旧 Blob 覆盖新部署包。
 - 周三柏林时间 18:25 后开始尝试更新。
 - 周六柏林时间 19:25 后开始尝试更新。
@@ -30,4 +31,10 @@
 
 ```text
 https://你的网站域名/.netlify/functions/update-lotto-data?force=1&date=YYYY-MM-DD&main=1,2,3,4,5,6&super=7
+```
+
+注意：Netlify Scheduled Function 可能无法直接用 URL 打开，会返回 403。手动测试自动抓取请访问：
+
+```text
+https://你的网站域名/.netlify/functions/manual-update-lotto-data
 ```

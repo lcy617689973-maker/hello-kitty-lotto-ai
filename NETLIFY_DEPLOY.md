@@ -36,6 +36,7 @@ Netlify CLI 会构建项目并上传静态文件、Functions 和配置。
 
 - `lotto-data`：网页读取的最新统计 JSON。
 - `update-lotto-data`：每周三、每周六开奖后自动尝试读取官方最新开奖，更新历史数据库，并重新生成冷热号、AI 推荐、AI Score 等统计结果。
+- `manual-update-lotto-data`：手动检查/刷新最新开奖数据。因为 Netlify 的 Scheduled Function 可能不能直接用 URL 调用，这个函数专门用于手动测试。
 
 为了让网站尽快看到新数据，Netlify 会在 UTC 16:00-22:59 每 5 分钟唤醒一次。函数内部会按柏林时间判断：
 
@@ -46,7 +47,7 @@ Netlify CLI 会构建项目并上传静态文件、Functions 和配置。
 
 如果官方页面临时 500 或页面结构变化，函数现在不会再崩溃，而是返回 JSON 状态，网站继续使用上一版稳定数据。
 
-这个版本的随包静态数据已补到 `2026-08-15`。网页读取线上数据时会比较 Netlify Blobs 和静态 JSON 的最新日期，优先显示更新的一份；下一次 `update-lotto-data` 成功运行后，会把更新后的历史库写回 Blobs。
+这个版本的随包静态数据已补到 `2026-08-19`。网页读取线上数据时会比较 Netlify Blobs 和静态 JSON 的最新日期，优先显示更新的一份；下一次 `update-lotto-data` 成功运行后，会把更新后的历史库写回 Blobs。
 
 ## 手动补录当期开奖
 
@@ -57,6 +58,12 @@ https://你的网站域名/.netlify/functions/update-lotto-data?force=1&date=202
 ```
 
 把 `date`、`main`、`super` 换成真实开奖结果即可。成功后会写入 Netlify Blobs 数据库，并重新生成统计 JSON。网页刷新后会读取新数据。
+
+如果只是想手动测试“自动抓取最新开奖号”是否正常，请访问：
+
+```text
+https://你的网站域名/.netlify/functions/manual-update-lotto-data
+```
 
 ## 官方数据源
 

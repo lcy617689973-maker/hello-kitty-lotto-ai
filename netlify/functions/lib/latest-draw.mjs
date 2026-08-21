@@ -113,9 +113,27 @@ function parseJsonLike(text, source) {
   return candidates.map(validDraw).filter(Boolean);
 }
 
+function parseNumberBallLayouts(text, source) {
+  const draws = [];
+  const layouts = text.matchAll(/<winning-ball-layout\b([\s\S]*?)<\/winning-ball-layout>/gi);
+  for (const layout of layouts) {
+    const block = layout[0];
+    if (!/super-number-title=["']Superzahl["']/i.test(block)) continue;
+    const date = parseDate(block);
+    const mainSlot = block.match(/<template[^>]+v-slot:number-balls[^>]*>([\s\S]*?)<\/template>/i)?.[1] ?? block;
+    const superSlot = block.match(/<template[^>]+v-slot:super-number-balls[^>]*>([\s\S]*?)<\/template>/i)?.[1] ?? "";
+    const main = [...mainSlot.matchAll(/<number-ball\b[^>]*>\s*(\d{1,2})\s*<\/number-ball>/gi)].map((match) => Number(match[1]));
+    const superNumber = superSlot.match(/<number-ball\b[^>]*>\s*(\d)\s*<\/number-ball>/i)?.[1];
+    const draw = validDraw({ date, main, super: superNumber, source });
+    if (draw) draws.push(draw);
+  }
+  return draws;
+}
+
 function parseHtmlText(text, source) {
   const compact = text.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " ");
   const date = parseDate(compact);
+  const candidates = [];
   const lottoLine =
     compact.match(/LOTTO\s*6\s*aus\s*49[^0-9]*(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})/i) ??
     compact.match(/(?:Gewinnzahlen|Lottozahlen)[^0-9]*(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})/i);
@@ -124,10 +142,10 @@ function parseHtmlText(text, source) {
   const superIndex = compact.search(/Superzahl/i);
   const nearbyBeforeSuper = superIndex >= 0 ? compact.slice(Math.max(0, superIndex - 180), superIndex) : "";
   const nearbyNumbers = nearbyBeforeSuper.match(/\b\d{1,2}\b/g)?.map(Number).filter((number) => number >= 1 && number <= 49) ?? [];
-  const main = lottoLine ? lottoLine.slice(1, 7).map(Number) : nearbyNumbers.slice(-6);
   const superNumber = Number(superLine[1]);
-  const draw = validDraw({ date, main, super: superNumber, source });
-  return draw ? [draw] : [];
+  candidates.push({ date, main: nearbyNumbers.slice(-6), super: superNumber, source });
+  if (lottoLine) candidates.push({ date, main: lottoLine.slice(1, 7).map(Number), super: superNumber, source });
+  return candidates.map(validDraw).filter(Boolean);
 }
 
 async function readSource(url) {
@@ -154,7 +172,7 @@ export async function fetchLatestDraw() {
   for (const source of sources) {
     try {
       const text = await readSource(source);
-      const draws = [...parseJsonLike(text, source), ...parseHtmlText(text, source)];
+      const draws = [...parseJsonLike(text, source), ...parseNumberBallLayouts(text, source), ...parseHtmlText(text, source)];
       if (draws.length) {
         return draws.sort((a, b) => b.date.localeCompare(a.date))[0];
       }
